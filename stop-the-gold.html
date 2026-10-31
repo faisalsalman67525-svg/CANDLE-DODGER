@@ -2,13 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Arcade - Play Free Online Mini Games</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Stop The Gold - Mini Game</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     body {
@@ -18,157 +21,563 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px;
+      justify-content: center;
+      overflow: hidden;
+      padding: 10px;
     }
-    header {
-      text-align: center;
-      margin: 30px 0;
-    }
-    h1 {
-      font-size: 2.5rem;
-      color: #22c55e;
-      text-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
-      margin-bottom: 10px;
-    }
-    p {
-      color: #94a3b8;
-      font-size: 1.1rem;
-    }
-    .arcade-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
+    .game-wrapper {
+      position: relative;
       width: 100%;
-      max-width: 900px;
-      margin-bottom: 40px;
-    }
-    .game-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 20px;
-      text-align: center;
-      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      max-width: 420px;
+      height: 100vh;
+      max-height: 750px;
       display: flex;
       flex-direction: column;
+      align-items: center;
       justify-content: space-between;
     }
-    .game-card:hover {
-      transform: translateY(-5px);
-      border-color: #22c55e;
-      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.15);
-    }
-    .game-title {
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: #f8fafc;
-      margin-bottom: 10px;
-    }
-    .game-desc {
-      color: #94a3b8;
-      font-size: 0.95rem;
-      margin-bottom: 20px;
-    }
-    .play-btn {
-      background: #22c55e;
-      color: #000;
-      text-decoration: none;
-      font-weight: bold;
-      padding: 10px 20px;
-      border-radius: 8px;
-      transition: background 0.2s;
-      display: inline-block;
-    }
-    .play-btn:hover {
-      background: #16a34a;
-      color: #fff;
-    }
-    footer {
-      margin-top: auto;
-      text-align: center;
-      color: #64748b;
-      font-size: 0.9rem;
-      padding: 20px 0;
-      border-top: 1px solid #1e293b;
+    canvas {
       width: 100%;
+      height: 100%;
+      background: #1e293b;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 2px solid #334155;
+    }
+    .top-controls {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .btn-ui {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+    }
+    .btn-ui:active {
+      transform: scale(0.95);
+    }
+    .mode-tag {
+      background: rgba(234, 179, 8, 0.2);
+      border: 1px solid #eab308;
+      color: #facc15;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .back-btn {
+      margin-top: 10px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: #22c55e;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>🎮 MY ARCADE PORTAL</h1>
-    <p>Play awesome browser games instantly. No downloads required!</p>
-  </header>
-
-  <div class="arcade-grid">
-    <!-- Game 1: Candle Dodger -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🕯️ Candle Dodger</div>
-        <div class="game-desc">A fast, addictive one-tap trading chart game. Dodge red candles and collect green ones!</div>
-      </div>
-      <a href="candle-dodger.html" class="play-btn">Play Now</a>
+  <div class="game-wrapper">
+    <div class="top-controls">
+      <button class="btn-ui" id="mute-btn">🔊 Sound</button>
+      <div class="mode-tag" id="mode-tag">Classic Mode</div>
+      <button class="btn-ui" id="mode-btn">📅 Daily</button>
     </div>
 
-    <!-- Game 2: Burger Stack Rush -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🍔 Burger Stack Rush</div>
-        <div class="game-desc">Stack ingredients perfectly to build the tallest and most delicious burger tower!</div>
-      </div>
-      <a href="burger-stack.html" class="play-btn">Play Now</a>
-    </div>
-
-    <!-- Game 3: 2048 Arcade -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🧩 2048 Arcade</div>
-        <div class="game-desc">Slide tiles and merge matching numbers to reach the legendary 2048 tile!</div>
-      </div>
-      <a href="2048.html" class="play-btn">Play Now</a>
-    </div>
-
-    <!-- Game 4: Flappy Neon -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🐦 Flappy Neon</div>
-        <div class="game-desc">Tap to fly through glowing neon pipes in this highly addictive arcade classic!</div>
-      </div>
-      <a href="flappy.html" class="play-btn">Play Now</a>
-    </div>
-
-    <!-- Game 5: Retro Snake -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🐍 Retro Snake</div>
-        <div class="game-desc">Guide the neon snake, eat food to grow longer, and avoid walls in this retro classic!</div>
-      </div>
-      <a href="snake.html" class="play-btn">Play Now</a>
-    </div>
-
-    <!-- Game 6: Perfect Slice -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🔪 Perfect Slice</div>
-        <div class="game-desc">Drop the chef's knife at the exact center of sliding fruits for massive combos!</div>
-      </div>
-      <a href="perfect-slice.html" class="play-btn">Play Now</a>
-    </div>
-
-    <!-- Game 7: Stop The Gold -->
-    <div class="game-card">
-      <div>
-        <div class="game-title">🏆 Stop The Gold</div>
-        <div class="game-desc">Stop the spinning needle inside the golden zone to stack gold bars and build streaks!</div>
-      </div>
-      <a href="stop-the-gold.html" class="play-btn">Play Now</a>
-    </div>
+    <canvas id="gameCanvas"></canvas>
   </div>
 
-  <footer>
-    &copy; 2026 My Arcade. All rights reserved.
-  </footer>
+  <a href="index.html" class="back-btn">← Back to Arcade Home</a>
 
+  <script>
+    const CONFIG = {
+      canvasWidth: 400,
+      canvasHeight: 650,
+      initialSpeed: 0.04,
+      speedIncrement: 0.003,
+      initialZoneAngle: Math.PI * 0.5,
+      minZoneAngle: Math.PI * 0.15,
+      zoneShrinkRate: 0.02,
+      perfectTolerance: 0.08,
+      skinMilestones: [
+        { id: 'classic', name: 'Classic', scoreReq: 0, color: '#facc15' },
+        { id: 'laser', name: 'Laser', scoreReq: 10, color: '#ef4444' },
+        { id: 'comet', name: 'Comet', scoreReq: 25, color: '#38bdf8' },
+        { id: 'diamond', name: 'Diamond', scoreReq: 45, color: '#a855f7' },
+        { id: 'rainbow', name: 'Rainbow', scoreReq: 70, color: 'rainbow' }
+      ],
+      gameOverMessages: [
+        "Missed the gold 💀",
+        "So close... not really",
+        "Your finger is lagging",
+        "Blink and you lose",
+        "Skill issue ⚡"
+      ]
+    };
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let scale = 1;
+    let score = 0;
+    let streak = 0;
+    let isGameOver = false;
+    let isDailyMode = false;
+    let dailySeed = new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate();
+    let seedState = dailySeed;
+    
+    let highScoreClassic = localStorage.getItem('stg_high_classic') || 0;
+    let highScoreDaily = localStorage.getItem('stg_high_daily_' + dailySeed) || 0;
+    let activeSkinIndex = parseInt(localStorage.getItem('stg_active_skin') || '0');
+    let isMuted = localStorage.getItem('stg_muted') === 'true';
+
+    let pointerAngle = 0;
+    let pointerSpeed = CONFIG.initialSpeed;
+    let pointerDir = 1;
+    let zoneAngleSize = CONFIG.initialZoneAngle;
+    let zoneCenterAngle = Math.random() * Math.PI * 2;
+    let isFakeZone = false;
+
+    let ringCenterX = CONFIG.canvasWidth / 2;
+    let ringCenterY = CONFIG.canvasHeight / 2 - 30;
+    let ringRadius = 110;
+
+    let goldBars = [];
+    let particles = [];
+    let popups = [];
+    let screenShake = 0;
+    let hintPulse = 0;
+    let isFirstRun = true;
+    let isNewBest = false;
+
+    let audioCtx = null;
+    function initAudio() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch(e) {}
+    }
+
+    function playSound(type) {
+      if (isMuted) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      try {
+        let now = audioCtx.currentTime;
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'tap') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(400, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.1);
+          osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'perfect') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.08);
+          osc.frequency.setValueAtTime(783.99, now + 0.16);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.3);
+          osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'fail') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.linearRampToValueAtTime(40, now + 0.3);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.3);
+          osc.start(now); osc.stop(now + 0.3);
+        }
+      } catch(e) {}
+    }
+
+    function seededRandom() {
+      if (!isDailyMode) return Math.random();
+      let x = Math.sin(seedState++) * 10000;
+      return x - Math.floor(x);
+    }
+
+    function setupCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      scale = (rect.width / CONFIG.canvasWidth) * dpr;
+      ctx.imageSmoothingEnabled = true;
+    }
+
+    function handleTap(e) {
+      if (e) e.preventDefault();
+      initAudio();
+
+      // Check if clicked inside Game Over restart area
+      if (isGameOver) {
+        let rect = canvas.getBoundingClientRect();
+        let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        if (clientX && clientY) {
+          let x = (clientX - rect.left) / (rect.width / CONFIG.canvasWidth);
+          let y = (clientY - rect.top) / (rect.height / CONFIG.canvasHeight);
+          if (x >= CONFIG.canvasWidth / 2 - 90 && x <= CONFIG.canvasWidth / 2 + 90 && y >= 360 && y <= 408) {
+            restartGame();
+            return;
+          }
+        }
+        restartGame();
+        return;
+      }
+
+      isFirstRun = false;
+      evaluateStop();
+    }
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') return;
+      handleTap(e);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') handleTap();
+    });
+
+    document.getElementById('mute-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      isMuted = !isMuted;
+      localStorage.setItem('stg_muted', isMuted);
+      document.getElementById('mute-btn').innerText = isMuted ? "🔇 Muted" : "🔊 Sound";
+    });
+
+    document.getElementById('mode-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      isDailyMode = !isDailyMode;
+      document.getElementById('mode-tag').innerText = isDailyMode ? "Daily Mode" : "Classic Mode";
+      document.getElementById('mode-btn').innerText = isDailyMode ? "🎮 Classic" : "📅 Daily";
+      restartGame();
+    });
+
+    function restartGame() {
+      score = 0;
+      streak = 0;
+      isGameOver = false;
+      isNewBest = false;
+      goldBars = [];
+      particles = [];
+      popups = [];
+      pointerSpeed = CONFIG.initialSpeed;
+      zoneAngleSize = CONFIG.initialZoneAngle;
+      seedState = dailySeed;
+      spawnNewZone();
+    }
+
+    function spawnNewZone() {
+      zoneCenterAngle = seededRandom() * Math.PI * 2;
+      isFakeZone = (score > 0 && score % 5 === 0 && seededRandom() > 0.4);
+      if (score > 3 && seededRandom() > 0.7) {
+        pointerDir *= -1;
+      }
+    }
+
+    function evaluateStop() {
+      let normPointer = (pointerAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      let normCenter = (zoneCenterAngle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+
+      let angleDiff = Math.abs(normPointer - normCenter);
+      if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+
+      let halfZone = zoneAngleSize / 2;
+
+      if (isFakeZone && angleDiff <= halfZone) {
+        playSound('fail');
+        screenShake = 20;
+        addPopup("FAKE ZONE! 💀", ringCenterX, ringCenterY - 140, '#ef4444');
+        triggerGameOver();
+        return;
+      }
+
+      if (angleDiff <= halfZone) {
+        let isPerfect = angleDiff <= CONFIG.perfectTolerance;
+        let points = isPerfect ? 2 : 1;
+        streak++;
+        score += points * Math.min(streak, 5);
+
+        playSound(isPerfect ? 'perfect' : 'tap');
+        screenShake = isPerfect ? 12 : 5;
+
+        if (isPerfect) {
+          addPopup("PERFECT! 🔥", ringCenterX, ringCenterY - 140, '#22c55e');
+          createParticles(ringCenterX, ringCenterY, '#facc15', 25);
+        } else {
+          addPopup("+ " + (points * Math.min(streak, 5)), ringCenterX, ringCenterY - 140, '#facc15');
+          createParticles(ringCenterX, ringCenterY, '#facc15', 10);
+        }
+
+        addGoldBarToStack();
+        checkSkinUnlocks();
+
+        let currentBest = isDailyMode ? highScoreDaily : highScoreClassic;
+        if (score > currentBest) {
+          if (!isNewBest && currentBest > 0) isNewBest = true;
+          if (isDailyMode) {
+            highScoreDaily = score;
+            localStorage.setItem('stg_high_daily_' + dailySeed, score);
+          } else {
+            highScoreClassic = score;
+            localStorage.setItem('stg_high_classic', score);
+          }
+        }
+
+        pointerSpeed = CONFIG.initialSpeed + (score * CONFIG.speedIncrement);
+        if (zoneAngleSize > CONFIG.minZoneAngle) {
+          zoneAngleSize -= CONFIG.zoneShrinkRate * 0.05;
+        }
+
+        spawnNewZone();
+      } else {
+        playSound('fail');
+        screenShake = 25;
+        streak = 0;
+        addPopup("MISSED!", ringCenterX, ringCenterY - 140, '#ef4444');
+        triggerGameOver();
+      }
+    }
+
+    function addGoldBarToStack() {
+      let stackX = 40;
+      let stackY = CONFIG.canvasHeight - 80 - (goldBars.length * 12);
+      goldBars.push({ x: stackX, y: stackY, targetY: stackY });
+    }
+
+    function checkSkinUnlocks() {
+      for (let i = CONFIG.skinMilestones.length - 1; i >= 0; i--) {
+        if (score >= CONFIG.skinMilestones[i].scoreReq) {
+          if (activeSkinIndex < i) {
+            activeSkinIndex = i;
+            localStorage.setItem('stg_active_skin', activeSkinIndex);
+            addPopup("NEW SKIN: " + CONFIG.skinMilestones[i].name, ringCenterX, 100, '#facc15');
+          }
+          break;
+        }
+      }
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      let msg = CONFIG.gameOverMessages[Math.floor(seededRandom() * CONFIG.gameOverMessages.length)];
+      popups.push({ text: msg, x: ringCenterX, y: ringCenterY + 70, color: '#ef4444', scale: 1.2, life: 300 });
+    }
+
+    function createParticles(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        let angle = seededRandom() * Math.PI * 2;
+        let speed = seededRandom() * 5 + 2;
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: seededRandom() * 4 + 2,
+          color: color,
+          life: 30
+        });
+      }
+    }
+
+    function addPopup(text, x, y, color) {
+      popups.push({ text, x, y, color, scale: 1.4, life: 40 });
+    }
+
+    function update() {
+      if (screenShake > 0.5) screenShake *= 0.85;
+
+      if (!isGameOver) {
+        pointerAngle += pointerSpeed * pointerDir;
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      for (let i = popups.length - 1; i >= 0; i--) {
+        let pop = popups[i];
+        pop.y -= 0.6;
+        pop.scale = Math.max(1.0, pop.scale - 0.02);
+        pop.life--;
+        if (pop.life <= 0) popups.splice(i, 1);
+      }
+
+      hintPulse += 0.05;
+    }
+
+    function draw() {
+      ctx.save();
+      ctx.scale(scale, scale);
+
+      if (screenShake > 0.5) {
+        ctx.translate((seededRandom() - 0.5) * screenShake, (seededRandom() - 0.5) * screenShake);
+      }
+
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+
+      goldBars.forEach((bar) => {
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(bar.x - 20, bar.y, 40, 10);
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bar.x - 20, bar.y, 40, 10);
+      });
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.arc(ringCenterX, ringCenterY, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      let startAngle = zoneCenterAngle - zoneAngleSize / 2;
+      let endAngle = zoneCenterAngle + zoneAngleSize / 2;
+
+      ctx.strokeStyle = isFakeZone ? '#64748b' : '#facc15';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.arc(ringCenterX, ringCenterY, ringRadius, startAngle, endAngle);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(ringCenterX, ringCenterY, ringRadius, zoneCenterAngle - 0.02, zoneCenterAngle + 0.02);
+      ctx.stroke();
+
+      let skin = CONFIG.skinMilestones[activeSkinIndex];
+      let pointerColor = skin.color === 'rainbow' ? `hsl(${(Date.now() / 5) % 360}, 80%, 60%)` : skin.color;
+
+      let pointerTipX = ringCenterX + Math.cos(pointerAngle) * (ringRadius + 2);
+      let pointerTipY = ringCenterY + Math.sin(pointerAngle) * (ringRadius + 2);
+
+      ctx.strokeStyle = pointerColor;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(ringCenterX, ringCenterY);
+      ctx.lineTo(pointerTipX, pointerTipY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(ringCenterX, ringCenterY, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      drawUI();
+
+      popups.forEach(pop => {
+        ctx.save();
+        ctx.font = `bold ${Math.round(22 * pop.scale)}px sans-serif`;
+        ctx.fillStyle = pop.color;
+        ctx.textAlign = 'center';
+        ctx.fillText(pop.text, pop.x, pop.y);
+        ctx.restore();
+      });
+
+      if (isFirstRun && !isGameOver) {
+        let pulseScale = 1 + Math.sin(hintPulse * 4) * 0.08;
+        ctx.save();
+        ctx.translate(ringCenterX, ringCenterY + 160);
+        ctx.scale(pulseScale, pulseScale);
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#facc15';
+        ctx.textAlign = 'center';
+        ctx.fillText('👇 TAP TO STOP IN GOLD ZONE!', 0, 0);
+        ctx.restore();
+      }
+
+      if (isGameOver) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText('GAME OVER', ringCenterX, 180);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(`Gold Bars: ${score}`, ringCenterX, 230);
+
+        let best = isDailyMode ? highScoreDaily : highScoreClassic;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px sans-serif';
+        ctx.fillText(`Best Record: ${best}`, ringCenterX, 260);
+
+        if (isNewBest) {
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('🎉 NEW BEST RECORD! 🎉', ringCenterX, 295);
+        }
+
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(ringCenterX - 90, 360, 180, 48);
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('TAP TO PLAY', ringCenterX, 390);
+      }
+
+      ctx.restore();
+    }
+
+    function drawUI() {
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(score, ringCenterX, 60);
+
+      if (streak > 1) {
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText(`STREAK x${streak}`, ringCenterX, 85);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', setupCanvas);
+    setupCanvas();
+    spawnNewZone();
+    loop();
+  </script>
 </body>
 </html>
