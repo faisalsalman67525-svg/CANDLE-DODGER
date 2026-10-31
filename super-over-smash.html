@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Super Over Smash - Mini Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      max-height: 750px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: #022c22;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 2px solid #065f46;
+    }
+    .top-controls {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .btn-ui {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+    }
+    .btn-ui:active {
+      transform: scale(0.95);
+    }
+    .mode-tag {
+      background: rgba(234, 179, 8, 0.2);
+      border: 1px solid #eab308;
+      color: #facc15;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .back-btn {
+      margin-top: 10px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-wrapper">
+    <div class="top-controls">
+      <button class="btn-ui" id="mute-btn">🔊 Sound</button>
+      <div class="mode-tag" id="mode-tag">Super Over</div>
+      <button class="btn-ui" id="mode-btn">📅 Daily</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <a href="index.html" class="back-btn">← Back to Arcade Home</a>
+
+  <script>
+    // --- CONFIGURATION ---
+    const CONFIG = {
+      canvasWidth: 400,
+      canvasHeight: 650,
+      targetScore: 18,
+      ballSpeed: 4.2,
+      perfectTolerance: 6, // pixels from ideal impact point
+      batSkins: [
+        { id: 'wooden', name: 'Wooden', scoreReq: 0, color: '#b45309' },
+        { id: 'neon', name: 'Neon', scoreReq: 15, color: '#06b6d4' },
+        { id: 'golden', name: 'Golden', scoreReq: 30, color: '#facc15' },
+        { id: 'fire', name: 'Fire', scoreReq: 50, color: '#ef4444' },
+        { id: 'rainbow', name: 'Rainbow', scoreReq: 80, color: 'rainbow' }
+      ],
+      gameOverMessages: [
+        "Clean bowled 💀",
+        "Caught at long-on",
+        "Needed a six, got a duck",
+        "Fielder said thanks",
+        "Skill issue 🏏"
+      ],
+      commentaryLines: [
+        "WHAT A SHOT!",
+        "Into the stands!",
+        "Clean bowled!",
+        "Dropped! 😬",
+        "That's gone miles!",
+        "Edged and safe!",
+        "Straight to the fielder!"
+      ]
+    };
+
+    // --- GAME STATE ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let scale = 1;
+    let score = 0;
+    let ballsLeft = 6;
+    let overHistory = []; // e.g. ['•', '4', '6', 'W']
+    let isGameOver = false;
+    let isDailyMode = false;
+    let dailySeed = new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate();
+    let seedState = dailySeed;
+    
+    let highScoreClassic = localStorage.getItem('sos_high_classic') || 0;
+    let highScoreDaily = localStorage.getItem('sos_high_daily_' + dailySeed) || 0;
+    let activeSkinIndex = parseInt(localStorage.getItem('sos_active_skin') || '0');
+    let isMuted = localStorage.getItem('sos_muted') === 'true';
+
+    let gameState = 'ready'; // ready, bowling, hitting, result, over
+    let ball = null;
+    let batsman = { x: CONFIG.canvasWidth / 2, y: 500, swingAngle: 0, swinging: false };
+    let bowler = { x: CONFIG.canvasWidth / 2, y: 120, state: 'runup' };
+    
+    let particles = [];
+    let popups = [];
+    let screenShake = 0;
+    let slowMoTimer = 0;
+    let hintPulse = 0;
+    let isFirstRun = true;
+    let isNewBest = false;
+    let replayData = null; // for replay last shot
+
+    // --- AUDIO SYSTEM (Web Audio API) ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+      if (isMuted) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      let now = audioCtx.currentTime;
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'bat_crack') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'stumps') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'cheer') {
+        // Simple noise burst simulation for crowd roar
+        let bufferSize = audioCtx.sampleRate * 0.5;
+        let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        let noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        let filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1000;
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        noise.start(now);
+      }
+    }
+
+    function seededRandom() {
+      if (!isDailyMode) return Math.random();
+      let x = Math.sin(seedState++) * 10000;
+      return x - Math.floor(x);
+    }
+
+    function setupCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      scale = (rect.width / CONFIG.canvasWidth) * dpr;
+      ctx.imageSmoothingEnabled = true;
+    }
+
+    // --- INPUT HANDLERS ---
+    function handleAction(e) {
+      if (e) e.preventDefault();
+      initAudio();
+
+      if (isGameOver) {
+        restartGame();
+        return;
+      }
+
+      if (gameState === 'ready') {
+        startDelivery();
+      } else if (gameState === 'bowling') {
+        swingBat();
+      }
+    }
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') return;
+      handleAction(e);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') handleAction();
+    });
+
+    document.getElementById('mute-btn').addEventListener('click', () => {
+      isMuted = !isMuted;
+      localStorage.setItem('sos_muted', isMuted);
+      document.getElementById('mute-btn').innerText = isMuted ? "🔇 Muted" : "🔊 Sound";
+    });
+
+    document.getElementById('mode-btn').addEventListener('click', () => {
+      isDailyMode = !isDailyMode;
+      document.getElementById('mode-tag').innerText = isDailyMode ? "Daily Mode" : "Super Over";
+      document.getElementById('mode-btn').innerText = isDailyMode ? "🏏 Classic" : "📅 Daily";
+      restartGame();
+    });
+
+    function restartGame() {
+      score = 0;
+      ballsLeft = 6;
+      overHistory = [];
+      isGameOver = false;
+      isNewBest = false;
+      gameState = 'ready';
+      particles = [];
+      popups = [];
+      slowMoTimer = 0;
+      seedState = dailySeed;
+      ball = null;
+    }
+
+    // --- GAMEPLAY FLOW ---
+    function startDelivery() {
+      gameState = 'bowling';
+      isFirstRun = false;
+
+      // Determine ball type based on remaining balls (balls 5 & 6 are hardest)
+      let types = ['fast', 'slow', 'yorker', 'bouncer', 'swing'];
+      let typeWeights = ballsLeft <= 2 ? [0.1, 0.2, 0.3, 0.2, 0.2] : [0.3, 0.2, 0.15, 0.15, 0.2];
+      let rand = seededRandom();
+      let cumulative = 0;
+      let chosenType = 'fast';
+      for (let i = 0; i < types.length; i++) {
+        cumulative += typeWeights[i];
+        if (rand <= cumulative) {
+          chosenType = types[i];
+          break;
+        }
+      }
+
+      ball = {
+        x: bowler.x,
+        y: bowler.y,
+        targetX: batsman.x + (seededRandom() * 40 - 20),
+        targetY: batsman.y - 15,
+        z: 10, // height for bouncers
+        speed: chosenType === 'slow' ? 2.8 : (chosenType === 'fast' ? 5.5 : 4.2),
+        type: chosenType,
+        curve: chosenType === 'swing' ? (seededRandom() > 0.5 ? 1.5 : -1.5) : 0,
+        radius: 8,
+        progress: 0,
+        trail: []
+      };
+    }
+
+    function swingBat() {
+      if (!ball || batsman.swinging) return;
+      batsman.swinging = true;
+      batsman.swingAngle = -Math.PI / 4;
+
+      let distanceToImpact = Math.abs(ball.y - batsman.y);
+      let timingError = ball.y - batsman.y; // positive = late, negative = early
+
+      let outcome = '';
+      let runs = 0;
+
+      if (Math.abs(timingError) <= CONFIG.perfectTolerance) {
+        // PERFECT SIX
+        outcome = 'SIX! 🚀';
+        runs = 6;
+        slowMoTimer = 30;
+        screenShake = 15;
+        playSound('bat_crack');
+        playSound('cheer');
+        addPopup("INTO THE STANDS! 6️⃣", batsman.x, batsman.y - 60, '#facc15');
+        createExplosion(batsman.x, batsman.y, '#facc15', 30);
+      } else if (timingError > CONFIG.perfectTolerance && timingError < 25) {
+        // FOUR
+        outcome = 'FOUR! ⚡';
+        runs = 4;
+        screenShake = 8;
+        playSound('bat_crack');
+        addPopup("WHAT A SHOT! 4️⃣", batsman.x, batsman.y - 60, '#38bdf8');
+        createExplosion(batsman.x, batsman.y, '#38bdf8', 15);
+      } else if (timingError >= 25 && timingError < 50) {
+        // Single / Two
+        runs = seededRandom() > 0.5 ? 2 : 1;
+        outcome = `${runs} Run`;
+        playSound('bat_crack');
+        addPopup(`${runs} Run`, batsman.x, batsman.y - 60, '#22c55e');
+      } else if (timingError <= -15 && timingError > -40) {
+        // Edge / Leg side weak hit
+        runs = seededRandom() > 0.7 ? 1 : 0;
+        outcome = runs > 0 ? '1 Run (Edge)' : 'Dot Ball';
+        playSound('bat_crack');
+        addPopup("Edged!", batsman.x, batsman.y - 60, '#94a3b8');
+      } else {
+        // WICKET (Bowled / LBW / Caught)
+        outcome = 'OUT!';
+        runs = 'W';
+        screenShake = 20;
+        playSound('stumps');
+        addPopup("CLEAN BOWLED! 💀", batsman.x, batsman.y - 60, '#ef4444');
+      }
+
+      score += (typeof runs === 'number' ? runs : 0);
+      ballsLeft--;
+      overHistory.push(runs);
+
+      gameState = 'result';
+      ball = null;
+
+      // Check High Score
+      let currentBest = isDailyMode ? highScoreDaily : highScoreClassic;
+      if (score > currentBest) {
+        if (!isNewBest && currentBest > 0) isNewBest = true;
+        if (isDailyMode) {
+          highScoreDaily = score;
+          localStorage.setItem('sos_high_daily_' + dailySeed, score);
+        } else {
+          highScoreClassic = score;
+          localStorage.setItem('sos_high_classic', score);
+        }
+      }
+
+      // Check Game Over conditions
+      if (runs === 'W' || ballsLeft === 0 || score >= CONFIG.targetScore) {
+        setTimeout(triggerGameOver, 1200);
+      } else {
+        setTimeout(() => {
+          batsman.swinging = false;
+          gameState = 'ready';
+        }, 1000);
+      }
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      gameState = 'over';
+    }
+
+    // --- VISUAL EFFECTS ---
+    function createExplosion(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        let angle = seededRandom() * Math.PI * 2;
+        let speed = seededRandom() * 6 + 2;
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: seededRandom() * 4 + 2,
+          color: color,
+          life: 35
+        });
+      }
+    }
+
+    function addPopup(text, x, y, color) {
+      popups.push({ text, x, y, color, scale: 1.4, life: 45 });
+    }
+
+    // --- MAIN GAME LOOP ---
+    function update() {
+      if (screenShake > 0.5) screenShake *= 0.85;
+      if (slowMoTimer > 0) slowMoTimer--;
+
+      // Ball Physics
+      if (gameState === 'bowling' && ball) {
+        let effectiveSpeed = ball.speed * (slowMoTimer > 0 ? 0.3 : 1.0);
+        ball.y += effectiveSpeed;
+        ball.x += ball.curve * 0.4;
+
+        ball.trail.push({ x: ball.x, y: ball.y });
+        if (ball.trail.length > 10) ball.trail.shift();
+
+        // Auto miss if ball passes batsman without swing
+        if (ball.y > batsman.y + 20) {
+          playSound('stumps');
+          screenShake = 15;
+          addPopup("CLEAN BOWLED! 💀", batsman.x, batsman.y - 60, '#ef4444');
+          overHistory.push('W');
+          ballsLeft--;
+          gameState = 'result';
+          ball = null;
+          setTimeout(triggerGameOver, 1200);
+        }
+      }
+
+      // Particles Update
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.2;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      // Popups Update
+      for (let i = popups.length - 1; i >= 0; i--) {
+        let pop = popups[i];
+        pop.y -= 0.7;
+        pop.scale = Math.max(1.0, pop.scale - 0.02);
+        pop.life--;
+        if (pop.life <= 0) popups.splice(i, 1);
+      }
+
+      hintPulse += 0.05;
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function draw() {
+      ctx.save();
+      ctx.scale(scale, scale);
+
+      if (screenShake > 0.5) {
+        ctx.translate((seededRandom() - 0.5) * screenShake, (seededRandom() - 0.5) * screenShake);
+      }
+
+      // Background / Pitch
+      ctx.fillStyle = '#022c22';
+      ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+
+      // Draw Cricket Pitch Rectangle
+      ctx.fillStyle = '#065f46';
+      ctx.beginPath();
+      ctx.moveTo(120, 80);
+      ctx.lineTo(280, 80);
+      ctx.lineTo(340, CONFIG.canvasHeight);
+      ctx.lineTo(60, CONFIG.canvasHeight);
+      ctx.closePath();
+      ctx.fill();
+
+      // Pitch Crease Lines
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(100, 480); ctx.lineTo(300, 480); // batting crease
+      ctx.moveTo(130, 110); ctx.lineTo(270, 110); // bowling crease
+      ctx.stroke();
+
+      // Draw Stumps at Batsman End
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(batsman.x - 12, batsman.y + 10, 6, 25);
+      ctx.fillRect(batsman.x - 3, batsman.y + 10, 6, 25);
+      ctx.fillRect(batsman.x + 6, batsman.y + 10, 6, 25);
+
+      // Draw Bowler
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(bowler.x, bowler.y, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw Ball Trail & Ball
+      if (ball) {
+        ball.trail.forEach((t, idx) => {
+          ctx.fillStyle = `rgba(250, 204, 21, ${idx / ball.trail.length * 0.4})`;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, ball.radius * (idx / ball.trail.length), 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Subtle Timing Ring around ball as it approaches batsman
+        let distToBatsman = Math.abs(ball.y - batsman.y);
+        if (distToBatsman < 120) {
+          let ringRadius = ball.radius + (distToBatsman * 0.3);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ringRadius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // Draw Batsman (Viewed from Behind)
+      ctx.save();
+      ctx.translate(batsman.x, batsman.y);
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(0, -10, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw Bat
+      ctx.rotate(batsman.swinging ? batsman.swingAngle : 0);
+      let skin = CONFIG.batSkins[activeSkinIndex];
+      let batColor = skin.color === 'rainbow' ? `hsl(${(Date.now() / 5) % 360}, 80%, 60%)` : skin.color;
+      ctx.fillStyle = batColor;
+      ctx.fillRect(-6, -45, 12, 55);
+      ctx.restore();
+
+      // Draw Particles
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw UI Header (Score, Target, Balls Left)
+      drawUI();
+
+      // Draw Popups
+      popups.forEach(pop => {
+        ctx.save();
+        ctx.font = `bold ${Math.round(22 * pop.scale)}px sans-serif`;
+        ctx.fillStyle = pop.color;
+        ctx.textAlign = 'center';
+        ctx.fillText(pop.text, pop.x, pop.y);
+        ctx.restore();
+      });
+
+      // First Time Hint
+      if (isFirstRun && gameState === 'ready') {
+        let pulseScale = 1 + Math.sin(hintPulse * 4) * 0.08;
+        ctx.save();
+        ctx.translate(CONFIG.canvasWidth / 2, 400);
+        ctx.scale(pulseScale, pulseScale);
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#facc15';
+        ctx.textAlign = 'center';
+        ctx.fillText('👇 TAP TO SWING BAT!', 0, 0);
+        ctx.restore();
+      }
+
+      // Game Over / Result Screen Overlay
+      if (isGameOver) {
+        ctx.fillStyle = 'rgba(2, 44, 34, 0.9)';
+        ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+
+        ctx.textAlign = 'center';
+        let won = score >= CONFIG.targetScore;
+        ctx.fillStyle = won ? '#22c55e' : '#ef4444';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText(won ? 'VICTORY! 🏆' : 'DEFEAT 💀', CONFIG.canvasWidth / 2, 160);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(`Final Score: ${score} / Target: ${CONFIG.targetScore}`, CONFIG.canvasWidth / 2, 210);
+
+        let best = isDailyMode ? highScoreDaily : highScoreClassic;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px sans-serif';
+        ctx.fillText(`Best Record: ${best}`, CONFIG.canvasWidth / 2, 245);
+
+        if (isNewBest) {
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('🎉 NEW BEST RECORD! 🎉', CONFIG.canvasWidth / 2, 280);
+        }
+
+        // Tap to Restart Button
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(CONFIG.canvasWidth / 2 - 90, 350, 180, 48);
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('PLAY AGAIN', CONFIG.canvasWidth / 2, 380);
+      }
+
+      ctx.restore();
+    }
+
+    function drawUI() {
+      // Score & Target
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Score: ${score} / ${CONFIG.targetScore}`, 20, 50);
+
+      // Balls Left
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(`Balls Left: ${ballsLeft}`, CONFIG.canvasWidth - 20, 45);
+
+      // Over History Dots / Runs
+      let historyStr = overHistory.join('  ');
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillStyle = '#facc15';
+      ctx.fillText(`Over: [ ${historyStr} ]`, CONFIG.canvasWidth / 2, 85);
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', setupCanvas);
+    setupCanvas();
+    loop();
+  </script>
+</body>
+</html>
