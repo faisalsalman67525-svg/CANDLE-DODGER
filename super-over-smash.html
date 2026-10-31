@@ -107,13 +107,12 @@
   <a href="index.html" class="back-btn">← Back to Arcade Home</a>
 
   <script>
-    // --- CONFIGURATION ---
     const CONFIG = {
       canvasWidth: 400,
       canvasHeight: 650,
       targetScore: 18,
       ballSpeed: 4.2,
-      perfectTolerance: 6, // pixels from ideal impact point
+      perfectTolerance: 6,
       batSkins: [
         { id: 'wooden', name: 'Wooden', scoreReq: 0, color: '#b45309' },
         { id: 'neon', name: 'Neon', scoreReq: 15, color: '#06b6d4' },
@@ -127,26 +126,16 @@
         "Needed a six, got a duck",
         "Fielder said thanks",
         "Skill issue 🏏"
-      ],
-      commentaryLines: [
-        "WHAT A SHOT!",
-        "Into the stands!",
-        "Clean bowled!",
-        "Dropped! 😬",
-        "That's gone miles!",
-        "Edged and safe!",
-        "Straight to the fielder!"
       ]
     };
 
-    // --- GAME STATE ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
     let scale = 1;
     let score = 0;
     let ballsLeft = 6;
-    let overHistory = []; // e.g. ['•', '4', '6', 'W']
+    let overHistory = [];
     let isGameOver = false;
     let isDailyMode = false;
     let dailySeed = new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate();
@@ -157,10 +146,10 @@
     let activeSkinIndex = parseInt(localStorage.getItem('sos_active_skin') || '0');
     let isMuted = localStorage.getItem('sos_muted') === 'true';
 
-    let gameState = 'ready'; // ready, bowling, hitting, result, over
+    let gameState = 'ready';
     let ball = null;
     let batsman = { x: CONFIG.canvasWidth / 2, y: 500, swingAngle: 0, swinging: false };
-    let bowler = { x: CONFIG.canvasWidth / 2, y: 120, state: 'runup' };
+    let bowler = { x: CONFIG.canvasWidth / 2, y: 120 };
     
     let particles = [];
     let popups = [];
@@ -169,13 +158,13 @@
     let hintPulse = 0;
     let isFirstRun = true;
     let isNewBest = false;
-    let replayData = null; // for replay last shot
 
-    // --- AUDIO SYSTEM (Web Audio API) ---
     let audioCtx = null;
     function initAudio() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch(e) {}
     }
 
     function playSound(type) {
@@ -183,43 +172,44 @@
       initAudio();
       if (!audioCtx) return;
 
-      let now = audioCtx.currentTime;
-      let osc = audioCtx.createOscillator();
-      let gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      try {
+        let now = audioCtx.currentTime;
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-      if (type === 'bat_crack') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
-        gain.gain.setValueAtTime(0.5, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.15);
-        osc.start(now); osc.stop(now + 0.15);
-      } else if (type === 'stumps') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.linearRampToValueAtTime(50, now + 0.3);
-        gain.gain.setValueAtTime(0.4, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.3);
-        osc.start(now); osc.stop(now + 0.3);
-      } else if (type === 'cheer') {
-        // Simple noise burst simulation for crowd roar
-        let bufferSize = audioCtx.sampleRate * 0.5;
-        let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-        let data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-        let noise = audioCtx.createBufferSource();
-        noise.buffer = buffer;
-        let filter = audioCtx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 1000;
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.linearRampToValueAtTime(0, now + 0.5);
-        noise.start(now);
-      }
+        if (type === 'bat_crack') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+          gain.gain.setValueAtTime(0.5, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.15);
+          osc.start(now); osc.stop(now + 0.15);
+        } else if (type === 'stumps') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.3);
+          osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'cheer') {
+          let bufferSize = audioCtx.sampleRate * 0.5;
+          let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+          let data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+          let noise = audioCtx.createBufferSource();
+          noise.buffer = buffer;
+          let filter = audioCtx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = 1000;
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.5);
+          noise.start(now);
+        }
+      } catch(e) {}
     }
 
     function seededRandom() {
@@ -237,7 +227,6 @@
       ctx.imageSmoothingEnabled = true;
     }
 
-    // --- INPUT HANDLERS ---
     function handleAction(e) {
       if (e) e.preventDefault();
       initAudio();
@@ -258,17 +247,22 @@
       if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') return;
       handleAction(e);
     });
+
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') handleAction();
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        handleAction(e);
+      }
     });
 
-    document.getElementById('mute-btn').addEventListener('click', () => {
+    document.getElementById('mute-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       isMuted = !isMuted;
       localStorage.setItem('sos_muted', isMuted);
       document.getElementById('mute-btn').innerText = isMuted ? "🔇 Muted" : "🔊 Sound";
     });
 
-    document.getElementById('mode-btn').addEventListener('click', () => {
+    document.getElementById('mode-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       isDailyMode = !isDailyMode;
       document.getElementById('mode-tag').innerText = isDailyMode ? "Daily Mode" : "Super Over";
       document.getElementById('mode-btn').innerText = isDailyMode ? "🏏 Classic" : "📅 Daily";
@@ -289,12 +283,10 @@
       ball = null;
     }
 
-    // --- GAMEPLAY FLOW ---
     function startDelivery() {
       gameState = 'bowling';
       isFirstRun = false;
 
-      // Determine ball type based on remaining balls (balls 5 & 6 are hardest)
       let types = ['fast', 'slow', 'yorker', 'bouncer', 'swing'];
       let typeWeights = ballsLeft <= 2 ? [0.1, 0.2, 0.3, 0.2, 0.2] : [0.3, 0.2, 0.15, 0.15, 0.2];
       let rand = seededRandom();
@@ -313,12 +305,10 @@
         y: bowler.y,
         targetX: batsman.x + (seededRandom() * 40 - 20),
         targetY: batsman.y - 15,
-        z: 10, // height for bouncers
         speed: chosenType === 'slow' ? 2.8 : (chosenType === 'fast' ? 5.5 : 4.2),
         type: chosenType,
         curve: chosenType === 'swing' ? (seededRandom() > 0.5 ? 1.5 : -1.5) : 0,
         radius: 8,
-        progress: 0,
         trail: []
       };
     }
@@ -328,15 +318,10 @@
       batsman.swinging = true;
       batsman.swingAngle = -Math.PI / 4;
 
-      let distanceToImpact = Math.abs(ball.y - batsman.y);
-      let timingError = ball.y - batsman.y; // positive = late, negative = early
-
-      let outcome = '';
+      let timingError = ball.y - batsman.y;
       let runs = 0;
 
       if (Math.abs(timingError) <= CONFIG.perfectTolerance) {
-        // PERFECT SIX
-        outcome = 'SIX! 🚀';
         runs = 6;
         slowMoTimer = 30;
         screenShake = 15;
@@ -345,28 +330,20 @@
         addPopup("INTO THE STANDS! 6️⃣", batsman.x, batsman.y - 60, '#facc15');
         createExplosion(batsman.x, batsman.y, '#facc15', 30);
       } else if (timingError > CONFIG.perfectTolerance && timingError < 25) {
-        // FOUR
-        outcome = 'FOUR! ⚡';
         runs = 4;
         screenShake = 8;
         playSound('bat_crack');
         addPopup("WHAT A SHOT! 4️⃣", batsman.x, batsman.y - 60, '#38bdf8');
         createExplosion(batsman.x, batsman.y, '#38bdf8', 15);
       } else if (timingError >= 25 && timingError < 50) {
-        // Single / Two
         runs = seededRandom() > 0.5 ? 2 : 1;
-        outcome = `${runs} Run`;
         playSound('bat_crack');
         addPopup(`${runs} Run`, batsman.x, batsman.y - 60, '#22c55e');
       } else if (timingError <= -15 && timingError > -40) {
-        // Edge / Leg side weak hit
         runs = seededRandom() > 0.7 ? 1 : 0;
-        outcome = runs > 0 ? '1 Run (Edge)' : 'Dot Ball';
         playSound('bat_crack');
         addPopup("Edged!", batsman.x, batsman.y - 60, '#94a3b8');
       } else {
-        // WICKET (Bowled / LBW / Caught)
-        outcome = 'OUT!';
         runs = 'W';
         screenShake = 20;
         playSound('stumps');
@@ -380,7 +357,6 @@
       gameState = 'result';
       ball = null;
 
-      // Check High Score
       let currentBest = isDailyMode ? highScoreDaily : highScoreClassic;
       if (score > currentBest) {
         if (!isNewBest && currentBest > 0) isNewBest = true;
@@ -393,7 +369,6 @@
         }
       }
 
-      // Check Game Over conditions
       if (runs === 'W' || ballsLeft === 0 || score >= CONFIG.targetScore) {
         setTimeout(triggerGameOver, 1200);
       } else {
@@ -406,10 +381,8 @@
 
     function triggerGameOver() {
       isGameOver = true;
-      gameState = 'over';
     }
 
-    // --- VISUAL EFFECTS ---
     function createExplosion(x, y, color, count) {
       for (let i = 0; i < count; i++) {
         let angle = seededRandom() * Math.PI * 2;
@@ -429,12 +402,10 @@
       popups.push({ text, x, y, color, scale: 1.4, life: 45 });
     }
 
-    // --- MAIN GAME LOOP ---
     function update() {
       if (screenShake > 0.5) screenShake *= 0.85;
       if (slowMoTimer > 0) slowMoTimer--;
 
-      // Ball Physics
       if (gameState === 'bowling' && ball) {
         let effectiveSpeed = ball.speed * (slowMoTimer > 0 ? 0.3 : 1.0);
         ball.y += effectiveSpeed;
@@ -443,7 +414,6 @@
         ball.trail.push({ x: ball.x, y: ball.y });
         if (ball.trail.length > 10) ball.trail.shift();
 
-        // Auto miss if ball passes batsman without swing
         if (ball.y > batsman.y + 20) {
           playSound('stumps');
           screenShake = 15;
@@ -456,7 +426,6 @@
         }
       }
 
-      // Particles Update
       for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.x += p.vx;
@@ -466,7 +435,6 @@
         if (p.life <= 0) particles.splice(i, 1);
       }
 
-      // Popups Update
       for (let i = popups.length - 1; i >= 0; i--) {
         let pop = popups[i];
         pop.y -= 0.7;
@@ -478,7 +446,6 @@
       hintPulse += 0.05;
     }
 
-    // --- RENDER FUNCTIONS ---
     function draw() {
       ctx.save();
       ctx.scale(scale, scale);
@@ -487,11 +454,9 @@
         ctx.translate((seededRandom() - 0.5) * screenShake, (seededRandom() - 0.5) * screenShake);
       }
 
-      // Background / Pitch
       ctx.fillStyle = '#022c22';
       ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
 
-      // Draw Cricket Pitch Rectangle
       ctx.fillStyle = '#065f46';
       ctx.beginPath();
       ctx.moveTo(120, 80);
@@ -501,27 +466,23 @@
       ctx.closePath();
       ctx.fill();
 
-      // Pitch Crease Lines
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(100, 480); ctx.lineTo(300, 480); // batting crease
-      ctx.moveTo(130, 110); ctx.lineTo(270, 110); // bowling crease
+      ctx.moveTo(100, 480); ctx.lineTo(300, 480);
+      ctx.moveTo(130, 110); ctx.lineTo(270, 110);
       ctx.stroke();
 
-      // Draw Stumps at Batsman End
       ctx.fillStyle = '#f59e0b';
       ctx.fillRect(batsman.x - 12, batsman.y + 10, 6, 25);
       ctx.fillRect(batsman.x - 3, batsman.y + 10, 6, 25);
       ctx.fillRect(batsman.x + 6, batsman.y + 10, 6, 25);
 
-      // Draw Bowler
       ctx.fillStyle = '#cbd5e1';
       ctx.beginPath();
       ctx.arc(bowler.x, bowler.y, 16, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw Ball Trail & Ball
       if (ball) {
         ball.trail.forEach((t, idx) => {
           ctx.fillStyle = `rgba(250, 204, 21, ${idx / ball.trail.length * 0.4})`;
@@ -535,7 +496,6 @@
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Subtle Timing Ring around ball as it approaches batsman
         let distToBatsman = Math.abs(ball.y - batsman.y);
         if (distToBatsman < 120) {
           let ringRadius = ball.radius + (distToBatsman * 0.3);
@@ -547,7 +507,6 @@
         }
       }
 
-      // Draw Batsman (Viewed from Behind)
       ctx.save();
       ctx.translate(batsman.x, batsman.y);
       ctx.fillStyle = '#38bdf8';
@@ -555,7 +514,6 @@
       ctx.arc(0, -10, 18, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw Bat
       ctx.rotate(batsman.swinging ? batsman.swingAngle : 0);
       let skin = CONFIG.batSkins[activeSkinIndex];
       let batColor = skin.color === 'rainbow' ? `hsl(${(Date.now() / 5) % 360}, 80%, 60%)` : skin.color;
@@ -563,7 +521,6 @@
       ctx.fillRect(-6, -45, 12, 55);
       ctx.restore();
 
-      // Draw Particles
       particles.forEach(p => {
         ctx.fillStyle = p.color;
         ctx.beginPath();
@@ -571,10 +528,8 @@
         ctx.fill();
       });
 
-      // Draw UI Header (Score, Target, Balls Left)
       drawUI();
 
-      // Draw Popups
       popups.forEach(pop => {
         ctx.save();
         ctx.font = `bold ${Math.round(22 * pop.scale)}px sans-serif`;
@@ -584,7 +539,6 @@
         ctx.restore();
       });
 
-      // First Time Hint
       if (isFirstRun && gameState === 'ready') {
         let pulseScale = 1 + Math.sin(hintPulse * 4) * 0.08;
         ctx.save();
@@ -593,11 +547,10 @@
         ctx.font = 'bold 18px sans-serif';
         ctx.fillStyle = '#facc15';
         ctx.textAlign = 'center';
-        ctx.fillText('👇 TAP TO SWING BAT!', 0, 0);
+        ctx.fillText('👇 TAP OR SPACE TO SWING!', 0, 0);
         ctx.restore();
       }
 
-      // Game Over / Result Screen Overlay
       if (isGameOver) {
         ctx.fillStyle = 'rgba(2, 44, 34, 0.9)';
         ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
@@ -623,7 +576,6 @@
           ctx.fillText('🎉 NEW BEST RECORD! 🎉', CONFIG.canvasWidth / 2, 280);
         }
 
-        // Tap to Restart Button
         ctx.fillStyle = '#22c55e';
         ctx.fillRect(CONFIG.canvasWidth / 2 - 90, 350, 180, 48);
         ctx.fillStyle = '#000';
@@ -635,18 +587,15 @@
     }
 
     function drawUI() {
-      // Score & Target
       ctx.fillStyle = '#f8fafc';
       ctx.font = 'bold 26px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(`Score: ${score} / ${CONFIG.targetScore}`, 20, 50);
 
-      // Balls Left
       ctx.textAlign = 'right';
       ctx.font = 'bold 18px sans-serif';
       ctx.fillText(`Balls Left: ${ballsLeft}`, CONFIG.canvasWidth - 20, 45);
 
-      // Over History Dots / Runs
       let historyStr = overHistory.join('  ');
       ctx.textAlign = 'center';
       ctx.font = 'bold 16px sans-serif';
