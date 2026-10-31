@@ -1,1180 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>CANDLE DODGER</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#070b10">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<style>
-  html, body {
-    margin: 0; padding: 0; height: 100%; background: #070b10; overflow: hidden;
-    overscroll-behavior: none; touch-action: none;
-    -webkit-user-select: none; user-select: none;
-    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
-  }
-  canvas {
-    display: block; position: fixed; left: 0; top: 0; width: 100%; height: 100%;
-    touch-action: none; outline: none;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Arcade - Play Free Online Mini Games</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin: 30px 0;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #22c55e;
+      text-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+      margin-bottom: 10px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 1.1rem;
+    }
+    .arcade-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 40px;
+    }
+    .game-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .game-card:hover {
+      transform: translateY(-5px);
+      border-color: #22c55e;
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.15);
+    }
+    .game-title {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #f8fafc;
+      margin-bottom: 10px;
+    }
+    .game-desc {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    .play-btn {
+      background: #22c55e;
+      color: #000;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: background 0.2s;
+      display: inline-block;
+    }
+    .play-btn:hover {
+      background: #16a34a;
+      color: #fff;
+    }
+    .coming-soon {
+      background: #1e293b;
+      border: 1px dashed #475569;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #64748b;
+      font-style: italic;
+    }
+    footer {
+      margin-top: auto;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.9rem;
+      padding: 20px 0;
+      border-top: 1px solid #1e293b;
+      width: 100%;
+    }
+  </style>
 </head>
 <body>
-<canvas id="game" tabindex="0"></canvas>
-<noscript style="color:#fff;font-family:sans-serif">Please enable JavaScript to play CANDLE DODGER.</noscript>
 
-<script>
-'use strict';
+  <header>
+    <h1>🎮 MY ARCADE PORTAL</h1>
+    <p>Play awesome browser games instantly. No downloads required!</p>
+  </header>
+
+  <div class="arcade-grid">
+    <!-- Game 1: Candle Dodger -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🕯️ Candle Dodger</div>
+        <div class="game-desc">A fast, addictive one-tap trading chart game. Dodge red candles and collect green ones!</div>
+      </div>
+      <a href="candle-dodger.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 2: Burger Stack Rush -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🍔 Burger Stack Rush</div>
+        <div class="game-desc">Stack ingredients perfectly to build the tallest and most delicious burger tower!</div>
+      </div>
+      <a href="burger-stack.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Placeholder for Future Games -->
+    <div class="coming-soon">
+      🚀 More Games Coming Soon!
+    </div>
+    <div class="coming-soon">
+      🚀 More Games Coming Soon!
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 My Arcade. All rights reserved.
+  </footer>
 
-/* =========================================================================
-   CANDLE DODGER  -  one-tap neon trading-chart arcade game
-   Hold = ball goes up, release = ball falls.
-   Dodge red candles, grab green ones, chase combos and close calls.
-   Everything (graphics + sound) is generated in code: no external files.
-   ========================================================================= */
-
-/* ------------------------------ CONFIG ---------------------------------- */
-const CONFIG = {
-  // Playfield in logical units (portrait 9:16). The canvas is scaled to fit,
-  // so the game plays identically on every device (needed for the Daily).
-  width: 360,
-  height: 640,
-
-  // Ball / physics
-  ballX: 100,
-  ballRadius: 11,
-  hitRadius: 9.5,          // a bit smaller than the drawn ball => deaths feel fair
-  gravity: 1150,           // px/s^2 pulling down while the finger is up
-  lift: 1500,              // px/s^2 pushing up while holding
-  maxRise: 380,            // max upward speed
-  maxFall: 430,            // max downward speed
-
-  // Difficulty ramp:  d = 1 - exp(-runTime / rampTime)   (0 -> 1, smooth)
-  rampTime: 40,
-  speedStart: 150,  speedMax: 310,        // scroll speed (px/s)
-  gapStart: 250,    gapMin: 152,          // gap between red bodies (px)
-  intervalStart: 1.35, intervalEnd: 0.95, // seconds between red candles
-  shiftFactor: 0.7,        // how far the gap may jump vs. what is physically reachable
-  // Late-game pressure so even great players end a run inside ~60 s
-  lateStart: 40, lateSpeedRate: 3, lateSpeedMax: 120, lateGapRate: 1.2, lateGapMax: 22,
-
-  // Candle geometry
-  bodyWidth: 34,
-  wickLen: 16,             // wick sticking into the gap (touch = combo reset, not death)
-  wickWidth: 4,
-  gapMargin: 46,
-
-  // Scoring
-  greensPerLevel: 3,       // greens needed per extra multiplier level (x2, x3, ...)
-  comboMax: 8,
-  comboDecay: 3.5,         // seconds without a green before the combo fades
-  greenRadius: 18,
-  nearMissPx: 7,           // pass within this many px of red => CLOSE CALL
-  nearMissPoints: 5,
-  smashPoints: 2,          // BULL RUN smashing a candle
-
-  // Power-ups (spawn counted in red candles, ~12 s apart, so Daily stays identical)
-  powerFirstAt: 8,
-  powerEveryMin: 9,
-  powerEveryMax: 11,
-  powerTime: { bull: 4, slow: 5, x2: 8 }, // seconds
-  slowMoScale: 0.6,
-
-  // Juice
-  closeCallScale: 0.3,     // slow-motion depth on a close call
-  closeCallTime: 0.4,      // seconds
-  retryLock: 0.45,         // seconds before a tap restarts after death (avoids accidents)
-  glow: true,              // set false on very slow devices
-
-  colors: {
-    bg: '#070b10',
-    green: '#00ff88',
-    red: '#ff3355',
-    text: '#e8f4ff',
-    muted: 'rgba(200,220,240,0.55)',
-    gold: '#ffd24a'
-  },
-
-  // Ball skins, unlocked by best score (saved in localStorage)
-  skins: [
-    { name: 'NEON',    unlock: 0,   c: '#00ff88', d: '#007a45', trail: '#00ff88' },
-    { name: 'BRONZE',  unlock: 25,  c: '#e08a4a', d: '#7a3f14', trail: '#e08a4a', sparkle: '#ffb070' },
-    { name: 'SILVER',  unlock: 60,  c: '#dfe8f5', d: '#6b7a8f', trail: '#dfe8f5', sparkle: '#ffffff' },
-    { name: 'GOLD',    unlock: 120, c: '#ffd24a', d: '#9a6b00', trail: '#ffd24a', sparkle: '#ffe99a' },
-    { name: 'DIAMOND', unlock: 250, c: '#7df9ff', d: '#1b8fb0', trail: '#7df9ff', sparkle: '#ffffff' },
-    { name: 'RAINBOW', unlock: 450, rainbow: true, sparkle: '#ffffff' }
-  ],
-
-  messages: [
-    'LIQUIDATED 💀', 'Margin call!', 'You bought the top', 'Stop loss hit',
-    'Even my cat trades better', 'REKT', 'Exit liquidity found 💸',
-    'Bears 1 - You 0', 'Down bad 📉', 'Your portfolio flatlined',
-    'Paper hands detected', 'Buy high, die young', 'The chart said no',
-    'Not financial advice... or skill'
-  ],
-
-  shareUrl: ''             // leave empty to share the page's own URL
-};
-
-/* ----------------------------- CONSTANTS -------------------------------- */
-const W = CONFIG.width, H = CONFIG.height, BX = CONFIG.ballX, BR = CONFIG.ballRadius;
-const C = CONFIG.colors;
-const TAU = Math.PI * 2, BIG = 6000;
-const FONT = '"Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif';
-const POWER = {
-  bull: { label: 'BULL RUN', color: '#ff4dff' },
-  slow: { label: 'SLOW MO',  color: '#35d0ff' },
-  x2:   { label: 'x2 SCORE', color: '#ffd24a' }
-};
-const POWER_KEYS = ['bull', 'slow', 'x2'];
-
-const lerp = (a, b, t) => a + (b - a) * t;
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const smooth = t => t * t * (3 - 2 * t);
-const easeOutBack = t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
-const rand = (a, b) => a + Math.random() * (b - a);
-const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; };
-
-/* ------------------------------ SAVE DATA ------------------------------- */
-const SAVE_KEY = 'candleDodger.v1';
-function loadSave() {
-  const def = {
-    bestEndless: { score: 0, dist: 0, y: H / 2, candles: 0 },
-    daily: { date: '', score: 0, dist: 0, y: H / 2, candles: 0 },
-    maxScore: 0, skin: 0, mute: false, seen: false, mode: 'endless', runs: 0
-  };
-  try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-    if (s && typeof s === 'object') return Object.assign(def, s);
-  } catch (e) { /* private mode etc. */ }
-  return def;
-}
-function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
-const save = loadSave();
-
-// Daily challenge uses the UTC date so the pattern is the same for everyone on Earth.
-const todayKey = () => new Date().toISOString().slice(0, 10);
-function bestFor(m) {
-  if (m === 'daily') return save.daily.date === todayKey() ? save.daily : { score: 0, dist: 0, y: H / 2, candles: 0 };
-  return save.bestEndless;
-}
-function setBest(m, rec) {
-  if (m === 'daily') save.daily = Object.assign({ date: runDate }, rec);
-  else save.bestEndless = rec;
-}
-
-/* ------------------------------- CANVAS --------------------------------- */
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-let dpr = 1, cssW = 0, cssH = 0, scale = 1, offX = 0, offY = 0;
-let view = { left: 0, right: W, top: 0, bottom: H };   // visible area in logical coords
-
-function resize() {
-  dpr = Math.min(window.devicePixelRatio || 1, 3);       // crisp on retina, capped for speed
-  cssW = window.innerWidth; cssH = window.innerHeight;
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
-  scale = Math.min(cssW / W, cssH / H);
-  offX = (cssW - W * scale) / 2;
-  offY = (cssH - H * scale) / 2;
-  view = { left: -offX / scale, right: (cssW - offX) / scale, top: -offY / scale, bottom: (cssH - offY) / scale };
-}
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', resize);
-
-/* -------------------------------- AUDIO --------------------------------- */
-// All sounds are synthesised with the Web Audio API (no audio files).
-const Sound = {
-  ctx: null, master: null, noiseBuf: null, muted: !!save.mute,
-  init() {
-    if (this.ctx) return;
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.55;
-      this.master.connect(this.ctx.destination);
-      const len = this.ctx.sampleRate;                   // 1 second of white noise
-      this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-      const d = this.noiseBuf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    } catch (e) { this.ctx = null; }
-  },
-  resume() { this.init(); if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
-  setMuted(m) {
-    this.muted = m;
-    if (this.master) this.master.gain.value = m ? 0 : 0.55;
-  },
-  tone(freq, dur, type, vol, to, delay) {
-    if (!this.ctx || this.muted) return;
-    const t = this.ctx.currentTime + (delay || 0);
-    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
-    o.type = type || 'sine';
-    o.frequency.setValueAtTime(freq, t);
-    if (to) o.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol || 0.2, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(this.master);
-    o.start(t); o.stop(t + dur + 0.05);
-  },
-  noise(dur, vol, f0, f1, delay, type) {
-    if (!this.ctx || this.muted || !this.noiseBuf) return;
-    const t = this.ctx.currentTime + (delay || 0);
-    const s = this.ctx.createBufferSource(); s.buffer = this.noiseBuf;
-    const f = this.ctx.createBiquadFilter(); f.type = type || 'bandpass';
-    f.frequency.setValueAtTime(f0, t);
-    f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
-    f.Q.value = 1.2;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.25);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(this.master);
-    s.start(t); s.stop(t + dur + 0.05);
-  },
-  // pitch climbs a pentatonic ladder as the streak grows
-  collect(streak) {
-    const pent = [0, 2, 4, 7, 9];
-    const semi = Math.min(24, pent[streak % 5] + 12 * Math.floor(streak / 5));
-    const f = 523.25 * Math.pow(2, semi / 12);
-    this.tone(f, 0.14, 'triangle', 0.26);
-    this.tone(f * 2, 0.09, 'sine', 0.09);
-  },
-  whoosh() { this.noise(0.38, 0.5, 500, 3800, 0, 'bandpass'); this.tone(300, 0.3, 'sine', 0.12, 900); },
-  wick()   { this.tone(200, 0.12, 'square', 0.1, 110); },
-  smash()  { this.noise(0.22, 0.6, 2500, 300, 0, 'lowpass'); this.tone(160, 0.18, 'sawtooth', 0.15, 60); },
-  power() { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.16, 'triangle', 0.22, 0, i * 0.06)); },
-  levelUp() { this.tone(880, 0.1, 'square', 0.1); this.tone(1320, 0.14, 'square', 0.1, 0, 0.07); },
-  newBest() { [659, 784, 988, 1319].forEach((f, i) => this.tone(f, 0.22, 'triangle', 0.24, 0, i * 0.1)); },
-  death() {
-    this.tone(320, 0.7, 'sawtooth', 0.28, 45);
-    this.noise(0.55, 0.7, 1800, 120, 0, 'lowpass');
-    this.tone(95, 0.45, 'sine', 0.5, 35);
-  },
-  blip() { this.tone(660, 0.07, 'square', 0.1, 880); }
-};
-
-/* ------------------------- SEEDED RANDOM (DAILY) ------------------------ */
-function xmur3(str) {
-  let h = 1779033703 ^ str.length;
-  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
-  return function () {
-    h = Math.imul(h ^ (h >>> 16), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return (h ^= h >>> 16) >>> 0;
-  };
-}
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/* ------------------------------ GAME STATE ------------------------------ */
-let state = 'ready';                       // ready | play | dead
-let mode = save.mode === 'daily' ? 'daily' : 'endless';
-let runDate = todayKey();
-let rngObs = null, rngPow = null;          // separate streams: candles vs power-ups
-
-let clock = 0, runTime = 0, dist = 0, speed = CONFIG.speedStart, gridScroll = 0;
-let score = 0, dispScore = 0, candles = 0, streak = 0, comboT = 0, lastMult = 1;
-const ball = { y: H / 2, vy: 0, sq: 0 };
-
-let obstacles = [], greens = [], pickups = [], trail = [], bgCandles = [];
-const particles = [], popups = [];
-const power = { bull: 0, slow: 0, x2: 0 };
-
-let spawnDist = 0, nextSpacing = 0, prevCenter = H / 2, obsIndex = 0, canonT = 0, lastInterval = 1.2;
-let nextPowerIdx = CONFIG.powerFirstAt;
-
-let shake = 0, flash = 0, flashColor = '255,255,255', closeT = 0, hitStop = 0, deadT = 0;
-let bannerT = 0, bannerText = '', toastT = 0, toastText = '', sparkT = 0;
-let prevBest = 0, ghost = null, newBest = false, bestBannerShown = false;
-let deathMsg = '', unlockedSkin = null, confettiDone = false, lastMsgIdx = -1;
-let lastRun = { candles: 0, score: 0, mode: 'endless' };
-
-const difficulty = t => 1 - Math.exp(-t / CONFIG.rampTime);
-const lateTime = t => Math.max(0, t - CONFIG.lateStart);
-const speedAt = t => lerp(CONFIG.speedStart, CONFIG.speedMax, difficulty(t)) + Math.min(CONFIG.lateSpeedMax, lateTime(t) * CONFIG.lateSpeedRate);
-const gapAt = t => lerp(CONFIG.gapStart, CONFIG.gapMin, difficulty(t)) - Math.min(CONFIG.lateGapMax, lateTime(t) * CONFIG.lateGapRate);
-const comboMult = () => clamp(1 + Math.floor(streak / CONFIG.greensPerLevel), 1, CONFIG.comboMax);
-const scoreFactor = () => (power.x2 > 0 ? 2 : 1);
-
-/* ------------------------- PARTICLES & POPUPS --------------------------- */
-function burst(x, y, n, color, spd, life, size, g) {
-  for (let i = 0; i < n; i++) {
-    if (particles.length > 500) break;
-    const a = Math.random() * TAU, s = spd * (0.3 + Math.random() * 0.7);
-    particles.push({
-      x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-      life: life * (0.6 + Math.random() * 0.4), max: life,
-      color: color, size: size * (0.6 + Math.random() * 0.8), g: g || 0
-    });
-  }
-}
-function popup(s, x, y, color, size, life) {
-  popups.push({ s: s, x: x, y: y, color: color || '#fff', size: size || 18, life: life || 0.9, max: life || 0.9 });
-}
-function toast(s) { toastText = s; toastT = 1.8; }
-
-/* ----------------------------- RUN CONTROL ------------------------------ */
-function startRun() {
-  runDate = todayKey();
-  if (mode === 'daily') {
-    const seed = xmur3('CANDLE-DODGER-' + runDate);
-    rngObs = mulberry32(seed()); rngPow = mulberry32(seed());
-  } else {
-    rngObs = mulberry32((Math.random() * 4294967296) >>> 0);
-    rngPow = mulberry32((Math.random() * 4294967296) >>> 0);
-  }
-  obstacles = []; greens = []; pickups = []; trail = [];
-  particles.length = 0; popups.length = 0;
-  power.bull = power.slow = power.x2 = 0;
-  ball.y = H / 2; ball.vy = 0; ball.sq = 0;
-  runTime = 0; dist = 0; speed = CONFIG.speedStart;
-  score = 0; dispScore = 0; candles = 0; streak = 0; comboT = 0; lastMult = 1;
-  spawnDist = 0; nextSpacing = 0; prevCenter = H / 2; obsIndex = 0; canonT = 0; lastInterval = 1.2;
-  nextPowerIdx = CONFIG.powerFirstAt;
-  shake = 0; flash = 0; closeT = 0; hitStop = 0; deadT = 0; bannerT = 0; sparkT = 0;
-  newBest = false; bestBannerShown = false; unlockedSkin = null; confettiDone = false;
-  const b = bestFor(mode);
-  prevBest = b.score;
-  ghost = b.score > 0 ? { dist: b.dist, y: b.y, score: b.score } : null;
-  state = 'play';
-}
-
-function spawnObstacle(overshoot) {
-  // Everything about a candle comes from "canonical time", which depends only on the
-  // candle's index. So the Daily pattern is bit-for-bit identical for every player,
-  // whatever their frame rate, slow-mo pickups or close calls.
-  const tc = canonT;
-  const d = difficulty(tc);
-  const gap = gapAt(tc);
-  const spd = speedAt(tc);
-  const interval = lerp(CONFIG.intervalStart, CONFIG.intervalEnd, d);
-  const spacingPrev = obsIndex === 0 ? 0 : nextSpacing;          // distance from the previous candle
-  const tBetween = obsIndex === 0 ? 1.2 : lastInterval;
-  // how far the gap centre may jump so it is always physically reachable
-  const reach = CONFIG.shiftFactor * CONFIG.gravity * Math.pow(0.75 * tBetween / 2, 2);
-  const lo = CONFIG.gapMargin + gap / 2, hi = H - CONFIG.gapMargin - gap / 2;
-
-  let center;
-  if (obsIndex === 0) {
-    center = H / 2 + (rngObs() * 2 - 1) * 50;
-  } else {
-    const mag = lerp(30, Math.max(30, reach), rngObs());
-    let dir = rngObs() < 0.5 ? -1 : 1;
-    center = prevCenter + dir * mag;
-    if (center < lo || center > hi) { dir = -dir; center = prevCenter + dir * mag; }
-    center = clamp(center, lo, hi);
-  }
-
-  const w = CONFIG.bodyWidth;
-  const x = W + 40 - overshoot;
-  obstacles.push({
-    x: x, w: w, gt: center - gap / 2, gb: center + gap / 2,
-    passed: false, smashed: false, wickHit: false, minClear: Infinity
-  });
-
-  // Green candles flow along the path from the previous gap to this one
-  if (obsIndex > 0) {
-    const n = rngObs() < 0.35 ? 3 : 2;
-    const fr = n === 3 ? [0.3, 0.5, 0.7] : [0.38, 0.62];
-    const pcx = x - spacingPrev + w / 2, ccx = x + w / 2;
-    for (let i = 0; i < fr.length; i++) {
-      const f = fr[i];
-      const gy = lerp(prevCenter, center, smooth(f)) + (rngObs() - 0.5) * 20;
-      greens.push({ x: lerp(pcx, ccx, f), y: clamp(gy, 30, H - 30), ph: rngObs() * TAU });
-    }
-  }
-  // Greedy green: sits close to a wick tip. Risk = reward (and near-misses)
-  if (rngObs() < 0.3) {
-    const side = rngObs() < 0.5 ? -1 : 1;
-    const eff = gap / 2 - CONFIG.wickLen;
-    greens.push({ x: x + w / 2, y: center + side * (eff - 20), ph: rngObs() * TAU });
-  }
-  // Power-up floats in the middle of the gap every ~12 s
-  if (obsIndex === nextPowerIdx) {
-    const type = POWER_KEYS[Math.floor(rngPow() * POWER_KEYS.length)];
-    pickups.push({ x: x + w / 2, y: center, type: type, ph: rngPow() * TAU });
-    nextPowerIdx += CONFIG.powerEveryMin + Math.floor(rngPow() * (CONFIG.powerEveryMax - CONFIG.powerEveryMin + 1));
-  }
-
-  nextSpacing = spd * interval;
-  lastInterval = interval;
-  canonT += interval;
-  spawnDist = overshoot;
-  prevCenter = center;
-  obsIndex++;
-}
-
-function addScore(pts) { score += pts; }
-
-function collectGreen(g) {
-  streak++;
-  comboT = CONFIG.comboDecay;
-  const mult = comboMult();
-  const pts = mult * scoreFactor();
-  addScore(pts);
-  ball.sq = 1;
-  Sound.collect(streak);
-  burst(g.x, greenY(g), 10, C.green, 160, 0.5, 2.6, 0);
-  popup('+' + pts, g.x, greenY(g) - 14, C.green, 17, 0.8);
-  if (mult > lastMult) {
-    popup('x' + mult + ' COMBO!', BX + 10, ball.y - 42, '#ffffff', 20, 1.1);
-    Sound.levelUp();
-  }
-  lastMult = mult;
-}
-
-function resetCombo(why) {
-  if (streak > 0) popup(why, BX + 10, ball.y - 34, '#ff7088', 14, 0.9);
-  streak = 0; comboT = 0; lastMult = 1;
-}
-
-function activatePower(type) {
-  power[type] = CONFIG.powerTime[type];
-  bannerText = POWER[type].label + '!'; bannerT = 1.3;
-  Sound.power();
-  flash = 0.5; flashColor = type === 'bull' ? '255,77,255' : (type === 'slow' ? '53,208,255' : '255,210,74');
-  burst(BX, ball.y, 26, POWER[type].color, 260, 0.7, 3, 0);
-}
-
-function closeCall() {
-  const pts = CONFIG.nearMissPoints * scoreFactor();
-  addScore(pts);
-  popup('CLOSE CALL +' + pts, BX + 14, ball.y - 40, '#ffffff', 19, 1.2);
-  closeT = CONFIG.closeCallTime;
-  flash = 0.35; flashColor = '255,255,255';
-  shake = Math.max(shake, 7);
-  Sound.whoosh();
-  burst(BX, ball.y, 16, '#ffffff', 220, 0.45, 2.2, 0);
-}
-
-function die() {
-  state = 'dead'; deadT = 0; hitStop = 0.14;
-  shake = 20; flash = 0.8; flashColor = '255,51,85';
-  Sound.death();
-  burst(BX, ball.y, 46, C.red, 330, 0.9, 3.4, 260);
-  burst(BX, ball.y, 24, skinStyle(save.skin).c, 260, 0.8, 3, 200);
-
-  const prev = bestFor(mode);
-  newBest = score > prev.score && score > 0;
-  if (newBest) setBest(mode, { score: score, dist: dist, y: ball.y, candles: candles });
-  const prevMax = save.maxScore;
-  save.maxScore = Math.max(save.maxScore, score);
-  unlockedSkin = null;
-  CONFIG.skins.forEach(function (s, i) { if (s.unlock > prevMax && s.unlock <= save.maxScore) unlockedSkin = i; });
-  save.runs++; save.seen = true;
-  persist();
-
-  lastRun = { candles: candles, score: score, mode: mode };
-  let i = Math.floor(Math.random() * CONFIG.messages.length);
-  if (i === lastMsgIdx) i = (i + 1) % CONFIG.messages.length;
-  lastMsgIdx = i; deathMsg = CONFIG.messages[i];
-}
-
-/* ------------------------------ UPDATE ---------------------------------- */
-function rectDist(px, py, rx, ry, rw, rh) {
-  const dx = Math.max(rx - px, 0, px - (rx + rw));
-  const dy = Math.max(ry - py, 0, py - (ry + rh));
-  return Math.hypot(dx, dy);
-}
-const greenY = g => g.y + Math.sin(clock * 3 + g.ph) * 3;
-
-function updateTrail(dx) {
-  for (let i = 0; i < trail.length; i++) trail[i].x -= dx;
-  while (trail.length && trail[0].x < -12) trail.shift();
-  const last = trail[trail.length - 1];
-  if (!last || BX - last.x >= 5) trail.push({ x: BX, y: ball.y });
-}
-
-function updateBgCandles(dx) {
-  if (!bgCandles.length) {
-    let y = H * 0.5, x = -20;
-    while (x < W + 120) { const c = makeBgCandle(x, y); bgCandles.push(c); y = c.yEnd; x += 22; }
-  }
-  for (let i = 0; i < bgCandles.length; i++) bgCandles[i].x -= dx * 0.35;
-  while (bgCandles.length && bgCandles[0].x < -30) {
-    bgCandles.shift();
-    const last = bgCandles[bgCandles.length - 1];
-    bgCandles.push(makeBgCandle(last.x + 22, last.yEnd));
-  }
-}
-function makeBgCandle(x, y0) {
-  const up = Math.random() < 0.5, body = rand(10, 46);
-  const yEnd = clamp(y0 + (up ? -body : body), 90, H - 90);
-  return { x: x, top: Math.min(y0, yEnd), h: Math.max(4, Math.abs(yEnd - y0)), up: up, wt: rand(4, 16), wb: rand(4, 16), yEnd: yEnd };
-}
-
-function updateParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.life -= dt;
-    if (p.life <= 0) { particles.splice(i, 1); continue; }
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt;
-    p.vx *= 1 - 1.5 * dt; if (!p.g) p.vy *= 1 - 1.5 * dt;
-  }
-  for (let i = popups.length - 1; i >= 0; i--) {
-    const t = popups[i];
-    t.life -= dt; t.y -= 34 * dt;
-    if (t.life <= 0) popups.splice(i, 1);
-  }
-}
-
-function update(dt) {
-  clock += dt;
-  if (hitStop > 0) { hitStop -= dt; return; }          // freeze-frame on impact
-  shake *= Math.exp(-9 * dt); if (shake < 0.05) shake = 0;
-  flash = Math.max(0, flash - dt * 2.6);
-  ball.sq = Math.max(0, ball.sq - dt * 5);
-  bannerT = Math.max(0, bannerT - dt);
-  toastT = Math.max(0, toastT - dt);
-  dispScore += (score - dispScore) * Math.min(1, dt * 12);
-  if (Math.abs(score - dispScore) < 0.05) dispScore = score;
-  updateParticles(dt);
-
-  if (state === 'play') updatePlay(dt);
-  else if (state === 'ready') updateIdle(dt);
-  else { deadT += dt; gridScroll += 10 * dt; }
-}
-
-function updateIdle(dt) {
-  const dx = 70 * dt;
-  gridScroll += dx;
-  ball.y = H / 2 + Math.sin(clock * 2) * 14;
-  updateTrail(dx);
-  updateBgCandles(dx);
-}
-
-function updatePlay(dt) {
-  // power-up timers run in real time
-  for (const k of POWER_KEYS) if (power[k] > 0) power[k] = Math.max(0, power[k] - dt);
-
-  // time scale: SLOW MO power-up and the close-call dip
-  let ts = 1;
-  if (power.slow > 0) ts *= CONFIG.slowMoScale;
-  if (closeT > 0) { closeT -= dt; ts *= lerp(1, CONFIG.closeCallScale, clamp(closeT / CONFIG.closeCallTime, 0, 1)); }
-  const gdt = dt * ts;
-
-  runTime += gdt;
-  speed = speedAt(runTime);
-  const dx = speed * gdt;
-  dist += dx; gridScroll += dx;
-
-  // combo fades if you stop collecting
-  if (streak > 0) { comboT -= gdt; if (comboT <= 0) { streak = 0; lastMult = 1; } }
-
-  // ball physics: hold = lift, release = gravity
-  ball.vy += (input.held ? -CONFIG.lift : CONFIG.gravity) * gdt;
-  ball.vy = clamp(ball.vy, -CONFIG.maxRise, CONFIG.maxFall);
-  ball.y += ball.vy * gdt;
-  if (ball.y < BR) { ball.y = BR; ball.vy = 0; }
-  if (ball.y > H - BR) { ball.y = H - BR; ball.vy = 0; }
-
-  updateTrail(dx);
-  updateBgCandles(dx);
-
-  // sparkles for fancy skins
-  const sk = CONFIG.skins[save.skin];
-  sparkT -= dt;
-  if ((sk.sparkle || power.bull > 0) && sparkT <= 0) {
-    sparkT = 0.05;
-    burst(BX - 4, ball.y, 1, power.bull > 0 ? skinStyle(0, true).c : sk.sparkle, 60, 0.5, 2, 0);
-  }
-
-  // move the world
-  for (const o of obstacles) o.x -= dx;
-  for (const g of greens) g.x -= dx;
-  for (const p of pickups) p.x -= dx;
-  while (obstacles.length && obstacles[0].x + obstacles[0].w < -40) obstacles.shift();
-  while (greens.length && greens[0].x < -30) greens.shift();
-  while (pickups.length && pickups[0].x < -30) pickups.shift();
-
-  // spawn
-  spawnDist += dx;
-  if (spawnDist >= nextSpacing) spawnObstacle(spawnDist - nextSpacing);
-
-  // collisions with red candles
-  const hr = CONFIG.hitRadius, invincible = power.bull > 0;
-  for (const o of obstacles) {
-    if (o.x < BX + 80 && o.x + o.w > BX - 80 && !o.smashed) {
-      const cx = o.x + o.w / 2, ww = CONFIG.wickWidth, wl = CONFIG.wickLen;
-      const body = Math.min(
-        rectDist(BX, ball.y, o.x, -BIG, o.w, o.gt + BIG),
-        rectDist(BX, ball.y, o.x, o.gb, o.w, BIG)) - hr;
-      const wick = Math.min(
-        rectDist(BX, ball.y, cx - ww / 2, o.gt, ww, wl),
-        rectDist(BX, ball.y, cx - ww / 2, o.gb - wl, ww, wl)) - hr;
-      if (body < 0) {
-        if (invincible) {                                   // BULL RUN: smash through
-          o.smashed = true;
-          burst(o.x + o.w / 2, ball.y, 30, C.red, 300, 0.7, 3.2, 300);
-          shake = Math.max(shake, 9); Sound.smash();
-          const pts = CONFIG.smashPoints * scoreFactor();
-          addScore(pts); popup('SMASH +' + pts, BX + 14, ball.y - 30, '#ff4dff', 16, 0.8);
-        } else { die(); return; }
-      } else {
-        if (wick < 0 && !o.wickHit) {                       // wick touch: combo reset, not death
-          o.wickHit = true;
-          if (!invincible) { resetCombo('COMBO LOST'); Sound.wick(); shake = Math.max(shake, 3); burst(BX, ball.y, 8, '#ff7088', 120, 0.4, 2, 0); }
-        }
-        if (!invincible) o.minClear = Math.min(o.minClear, body, wick);
-      }
-    }
-    // candle fully passed the ball?
-    if (!o.passed && o.x + o.w < BX - BR) {
-      o.passed = true; candles++;
-      addScore(1 * scoreFactor());
-      if (!o.smashed && !o.wickHit && o.minClear > 0 && o.minClear <= CONFIG.nearMissPx) closeCall();
-    }
-  }
-
-  // green candles
-  for (let i = greens.length - 1; i >= 0; i--) {
-    const g = greens[i];
-    if (Math.abs(g.x - BX) < 40 && Math.hypot(g.x - BX, greenY(g) - ball.y) < CONFIG.greenRadius + BR * 0.6) {
-      collectGreen(g); greens.splice(i, 1);
-    }
-  }
-  // power-ups
-  for (let i = pickups.length - 1; i >= 0; i--) {
-    const p = pickups[i];
-    if (Math.abs(p.x - BX) < 40 && Math.hypot(p.x - BX, p.y - ball.y) < 24 + BR * 0.5) {
-      activatePower(p.type); pickups.splice(i, 1);
-    }
-  }
-
-  // mid-run "NEW BEST!" banner (only when there was a previous best to beat)
-  if (!bestBannerShown && prevBest > 0 && score > prevBest) {
-    bestBannerShown = true; bannerText = 'NEW BEST!'; bannerT = 1.6; Sound.newBest();
-  }
-}
-
-/* ------------------------------ DRAWING --------------------------------- */
-let buttons = [];
-
-function skinStyle(i, forceRainbow) {
-  const s = CONFIG.skins[i] || CONFIG.skins[0];
-  if (s.rainbow || forceRainbow) {
-    const h = (clock * 180) % 360;
-    return { c: 'hsl(' + h + ',100%,62%)', d: 'hsl(' + h + ',100%,32%)', glow: 'hsla(' + h + ',100%,60%,0.55)', trail: 'hsl(' + h + ',100%,60%)', rainbow: true };
-  }
-  return { c: s.c, d: s.d, glow: hexA(s.c, 0.5), trail: s.trail, rainbow: false };
-}
-
-function text(s, x, y, size, color, align, weight, glow, maxW) {
-  let sz = size;
-  ctx.font = (weight || '800') + ' ' + sz + 'px ' + FONT;
-  if (maxW) {
-    const w = ctx.measureText(s).width;
-    if (w > maxW) { sz = Math.max(12, Math.floor(sz * maxW / w)); ctx.font = (weight || '800') + ' ' + sz + 'px ' + FONT; }
-  }
-  ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle';
-  if (glow) { ctx.shadowColor = color; ctx.shadowBlur = glow; }
-  ctx.fillStyle = color;
-  ctx.fillText(s, x, y);
-  if (glow) ctx.shadowBlur = 0;
-}
-
-function roundRect(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-function drawBackdrop() {
-  const g = ctx.createLinearGradient(0, view.top, 0, view.bottom);
-  g.addColorStop(0, '#0b121b'); g.addColorStop(1, '#05080c');
-  ctx.fillStyle = g;
-  ctx.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top);
-
-  // faint chart grid: horizontal lines are fixed, vertical lines scroll with the world
-  const GY = 64, GX = 72;
-  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(120,160,200,0.06)';
-  ctx.beginPath();
-  for (let y = Math.floor(view.top / GY) * GY; y <= view.bottom; y += GY) { ctx.moveTo(view.left, y + 0.5); ctx.lineTo(view.right, y + 0.5); }
-  const so = gridScroll % GX;
-  for (let k = Math.floor(view.left / GX) - 1; k * GX - so <= view.right; k++) { const x = k * GX - so; ctx.moveTo(x + 0.5, view.top); ctx.lineTo(x + 0.5, view.bottom); }
-  ctx.stroke();
-
-  // fake price axis
-  ctx.font = '600 9px ' + FONT; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(160,190,220,0.22)';
-  for (let y = GY; y < H; y += GY) ctx.fillText((2400 + (H - y) * 0.5).toFixed(2), W - 6, y - 7);
-}
-
-function drawBgCandles() {
-  for (const c of bgCandles) {
-    ctx.fillStyle = c.up ? 'rgba(0,255,136,0.08)' : 'rgba(255,51,85,0.08)';
-    ctx.fillRect(c.x + 4, c.top - c.wt, 1.5, c.h + c.wt + c.wb);
-    ctx.fillRect(c.x, c.top, 9, c.h);
-  }
-}
-
-function drawObstacle(o) {
-  if (o.smashed) return;
-  const top = view.top - 20, bot = view.bottom + 20;
-  if (CONFIG.glow) { ctx.shadowColor = C.red; ctx.shadowBlur = 14; }
-  ctx.fillStyle = C.red;
-  ctx.fillRect(o.x, top, o.w, o.gt - top);
-  ctx.fillRect(o.x, o.gb, o.w, bot - o.gb);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(255,255,255,0.18)';                 // highlight strip
-  ctx.fillRect(o.x + 4, top, 4, o.gt - top);
-  ctx.fillRect(o.x + 4, o.gb, 4, bot - o.gb);
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';                 // bright edge facing the gap
-  ctx.fillRect(o.x, o.gt - 2, o.w, 2);
-  ctx.fillRect(o.x, o.gb, o.w, 2);
-  const cx = o.x + o.w / 2, ww = CONFIG.wickWidth, wl = CONFIG.wickLen;
-  ctx.fillStyle = o.wickHit ? '#ffffff' : '#ff8aa0';        // thin wick toward the gap
-  ctx.fillRect(cx - ww / 2, o.gt, ww, wl);
-  ctx.fillRect(cx - ww / 2, o.gb - wl, ww, wl);
-}
-
-function drawGreen(g) {
-  const y = greenY(g), x = g.x;
-  ctx.fillStyle = 'rgba(0,255,136,0.12)';
-  ctx.beginPath(); ctx.arc(x, y, 20, 0, TAU); ctx.fill();
-  ctx.fillStyle = C.green;
-  ctx.fillRect(x - 1, y - 16, 2, 32);                       // wick
-  if (CONFIG.glow) { ctx.shadowColor = C.green; ctx.shadowBlur = 10; }
-  ctx.fillRect(x - 5, y - 9, 10, 18);                       // body
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillRect(x - 3, y - 8, 2, 16);
-}
-
-function drawPickup(p) {
-  const pw = POWER[p.type];
-  const col = p.type === 'bull' ? 'hsl(' + ((clock * 180) % 360) + ',100%,62%)' : pw.color;
-  const pulse = 1 + Math.sin(clock * 6 + p.ph) * 0.1;
-  ctx.save(); ctx.translate(p.x, p.y); ctx.scale(pulse, pulse);
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  ctx.beginPath(); ctx.arc(0, 0, 26, 0, TAU); ctx.fill();
-  if (CONFIG.glow) { ctx.shadowColor = col; ctx.shadowBlur = 14; }
-  ctx.strokeStyle = col; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(0, 0, 15, 0, TAU); ctx.stroke();
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(8,12,18,0.85)';
-  ctx.beginPath(); ctx.arc(0, 0, 12.5, 0, TAU); ctx.fill();
-  text(p.type === 'bull' ? 'B' : (p.type === 'slow' ? 'S' : 'x2'), 0, 1, p.type === 'x2' ? 12 : 15, col, 'center', '900');
-  ctx.restore();
-}
-
-function drawTrail() {
-  if (!trail.length) return;
-  const st = skinStyle(save.skin, power.bull > 0);
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 3;
-  if (st.rainbow) {
-    for (let i = 1; i < trail.length; i++) {
-      ctx.strokeStyle = 'hsl(' + ((i * 14 + clock * 220) % 360) + ',100%,60%)';
-      ctx.beginPath(); ctx.moveTo(trail[i - 1].x, trail[i - 1].y); ctx.lineTo(trail[i].x, trail[i].y); ctx.stroke();
-    }
-    ctx.beginPath(); ctx.moveTo(trail[trail.length - 1].x, trail[trail.length - 1].y); ctx.lineTo(BX, ball.y); ctx.stroke();
-    return;
-  }
-  const g = ctx.createLinearGradient(trail[0].x, 0, BX, 0);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, st.trail);
-  ctx.strokeStyle = g;
-  if (CONFIG.glow) { ctx.shadowColor = st.trail; ctx.shadowBlur = 8; }
-  ctx.beginPath(); ctx.moveTo(trail[0].x, trail[0].y);
-  for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
-  ctx.lineTo(BX, ball.y); ctx.stroke();
-  ctx.shadowBlur = 0;
-}
-
-function drawBall(x, y, vy) {
-  const st = skinStyle(save.skin, power.bull > 0);
-  const k = 0.1 + 0.22 * Math.min(1, Math.abs(vy) / CONFIG.maxFall);   // stretch along motion
-  const pop = 1 + ball.sq * 0.35;                                      // squash pop on collect
-  const ang = Math.atan2(vy, 280) * 0.9;
-  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale((1 + k) * pop, (1 / (1 + k)) * pop);
-  const gl = ctx.createRadialGradient(0, 0, BR * 0.3, 0, 0, BR * 3);
-  gl.addColorStop(0, st.glow); gl.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, 0, BR * 3, 0, TAU); ctx.fill();
-  const gb = ctx.createRadialGradient(-BR * 0.35, -BR * 0.4, 1, 0, 0, BR);
-  gb.addColorStop(0, '#ffffff'); gb.addColorStop(0.35, st.c); gb.addColorStop(1, st.d);
-  ctx.fillStyle = gb; ctx.beginPath(); ctx.arc(0, 0, BR, 0, TAU); ctx.fill();
-  ctx.restore();
-  if (state === 'play') {
-    if (power.bull > 0) {                                  // invincibility aura
-      ctx.strokeStyle = 'hsl(' + ((clock * 400) % 360) + ',100%,65%)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x, y, BR + 7 + Math.sin(clock * 20) * 1.5, 0, TAU); ctx.stroke();
-    }
-    if (power.x2 > 0) {
-      ctx.strokeStyle = 'rgba(255,210,74,0.7)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(x, y, BR + 4, 0, TAU); ctx.stroke();
-    }
-  }
-}
-
-function drawGhost() {
-  if (!ghost || state !== 'play') return;
-  const gx = BX + (ghost.dist - dist);
-  if (gx < -30 || gx > W + 40) return;
-  ctx.save();
-  ctx.setLineDash([6, 6]); ctx.strokeStyle = 'rgba(180,200,255,0.3)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(gx, view.top); ctx.lineTo(gx, view.bottom); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 0.5;
-  ctx.fillStyle = '#c8d6ff';
-  ctx.beginPath(); ctx.arc(gx, ghost.y, BR * 0.9, 0, TAU); ctx.fill();
-  ctx.globalAlpha = 1;
-  text('👻 BEST ' + ghost.score, gx, clamp(ghost.y - 24, 20, H - 20), 11, 'rgba(200,215,255,0.8)', 'center', '700');
-  ctx.restore();
-}
-
-function drawParticles() {
-  ctx.globalCompositeOperation = 'lighter';
-  for (const p of particles) {
-    ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
-    ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
-  }
-  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-}
-
-function drawPopups() {
-  for (const t of popups) {
-    ctx.globalAlpha = clamp(t.life / t.max * 1.6, 0, 1);
-    text(t.s, t.x, t.y, t.size, t.color, 'center', '900', 8);
-  }
-  ctx.globalAlpha = 1;
-}
-
-function pill(id, label, cx, cy, w, h, fill, color, size) {
-  roundRect(cx - w / 2, cy - h / 2, w, h, h / 2);
-  ctx.fillStyle = fill; ctx.fill();
-  text(label, cx, cy + 1, size || 15, color, 'center', '800');
-  buttons.push({ id: id, x: cx - w / 2, y: cy - h / 2, w: w, h: h });
-}
-
-function drawMute() {
-  const cx = W - 28, cy = view.top + 30;
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  ctx.beginPath(); ctx.arc(cx, cy, 17, 0, TAU); ctx.fill();
-  ctx.fillStyle = Sound.muted ? 'rgba(255,255,255,0.4)' : '#ffffff';
-  ctx.beginPath();                                          // speaker
-  ctx.moveTo(cx - 8, cy - 3); ctx.lineTo(cx - 4, cy - 3); ctx.lineTo(cx + 1, cy - 8);
-  ctx.lineTo(cx + 1, cy + 8); ctx.lineTo(cx - 4, cy + 3); ctx.lineTo(cx - 8, cy + 3);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 2; ctx.lineCap = 'round';
-  ctx.beginPath();
-  if (Sound.muted) { ctx.moveTo(cx + 5, cy - 4); ctx.lineTo(cx + 11, cy + 4); ctx.moveTo(cx + 11, cy - 4); ctx.lineTo(cx + 5, cy + 4); }
-  else { ctx.arc(cx + 1, cy, 6, -0.9, 0.9); ctx.moveTo(cx + 1 + 10 * Math.cos(-0.8), cy + 10 * Math.sin(-0.8)); ctx.arc(cx + 1, cy, 10, -0.8, 0.8); }
-  ctx.stroke();
-  buttons.push({ id: 'mute', x: cx - 24, y: cy - 24, w: 48, h: 48 });
-}
-
-function drawHUD() {
-  const top = view.top + 12;
-  text('BEST ' + bestFor(mode).score, 14, top + 14, 12, C.muted, 'left', '700');
-  if (mode === 'daily') text('DAILY ' + runDate.slice(5), 14, top + 30, 11, C.gold, 'left', '800');
-  text(String(Math.round(dispScore)), W / 2, top + 38, 46, C.text, 'center', '900', 12);
-  drawMute();
-
-  let y = top + 78;
-  if (streak > 0) {                                         // combo pill with fade bar
-    const m = comboMult(), w = 84;
-    roundRect(W / 2 - w / 2, y - 12, w, 24, 12);
-    ctx.fillStyle = 'rgba(0,255,136,0.16)'; ctx.fill();
-    ctx.fillStyle = C.green;
-    roundRect(W / 2 - w / 2, y + 8, w * clamp(comboT / CONFIG.comboDecay, 0, 1), 3, 1.5); ctx.fill();
-    text('x' + m + '  COMBO', W / 2, y - 1, 14, m > 1 ? '#ffffff' : C.green, 'center', '900');
-    y += 26;
-  }
-  for (const k of POWER_KEYS) {
-    if (power[k] <= 0) continue;
-    const pw = POWER[k], frac = power[k] / CONFIG.powerTime[k];
-    text(pw.label, W / 2, y, 12, pw.color, 'center', '900', 6);
-    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(W / 2 - 40, y + 9, 80, 3);
-    ctx.fillStyle = pw.color; ctx.fillRect(W / 2 - 40, y + 9, 80 * frac, 3);
-    y += 24;
-  }
-  // pulsing hint, first run only, no tutorial text
-  if (!save.seen && runTime < 4) {
-    const a = 0.55 + 0.45 * Math.sin(clock * 6);
-    ctx.globalAlpha = a * (1 - clamp((runTime - 3) / 1, 0, 1));
-    text('HOLD TO PUMP', W / 2, H * 0.72, 22, '#ffffff', 'center', '900', 12);
-    ctx.globalAlpha = 1;
-  }
-  if (bannerT > 0) {                                        // big banner (NEW BEST!, power-ups)
-    const a = clamp(bannerT / 0.4, 0, 1), s = 1 + 0.12 * Math.sin(clock * 14);
-    ctx.save(); ctx.translate(W / 2, H * 0.36); ctx.scale(s, s); ctx.globalAlpha = a;
-    text(bannerText, 0, 0, 38, 'hsl(' + ((clock * 300) % 360) + ',100%,65%)', 'center', '900', 18);
-    ctx.restore(); ctx.globalAlpha = 1;
-  }
-}
-
-function drawSkinChips(y) {
-  const n = CONFIG.skins.length, step = 46, x0 = W / 2 - (n - 1) * step / 2;
-  for (let i = 0; i < n; i++) {
-    const cx = x0 + i * step, s = CONFIG.skins[i], open = save.maxScore >= s.unlock;
-    if (save.skin === i) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, y, 18, 0, TAU); ctx.stroke(); }
-    if (open) {
-      const st = skinStyle(i);
-      const g = ctx.createRadialGradient(cx - 4, y - 4, 1, cx, y, 13);
-      g.addColorStop(0, '#fff'); g.addColorStop(0.4, st.c); g.addColorStop(1, st.d);
-      ctx.fillStyle = g;
-    } else ctx.fillStyle = '#18222e';
-    ctx.beginPath(); ctx.arc(cx, y, 13, 0, TAU); ctx.fill();
-    if (!open) text(String(s.unlock), cx, y + 1, 10, 'rgba(200,220,240,0.5)', 'center', '800');
-    buttons.push({ id: 'skin' + i, x: cx - 22, y: y - 22, w: 44, h: 44 });
-  }
-  text(CONFIG.skins[save.skin].name + ' BALL', W / 2, y + 30, 10, C.muted, 'center', '700');
-}
-
-function drawModeToggle(cy) {
-  const w = 220, h = 36, x = W / 2 - w / 2;
-  roundRect(x, cy - h / 2, w, h, h / 2); ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
-  const daily = mode === 'daily';
-  roundRect(daily ? W / 2 : x, cy - h / 2, w / 2, h, h / 2);
-  ctx.fillStyle = daily ? C.gold : C.green; ctx.fill();
-  text('ENDLESS', x + w / 4, cy + 1, 13, daily ? C.muted : '#04110a', 'center', '900');
-  text('📅 DAILY', x + w * 3 / 4, cy + 1, 13, daily ? '#1a1200' : C.muted, 'center', '900');
-  buttons.push({ id: 'mode', x: x, y: cy - h / 2, w: w, h: h });
-}
-
-function drawReady() {
-  const bob = Math.sin(clock * 2) * 3;
-  text('CANDLE', W / 2, 140 + bob, 56, C.green, 'center', '900', 22);
-  text('DODGER', W / 2, 196 - bob, 56, C.red, 'center', '900', 22);
-  text(mode === 'daily' ? 'DAILY CHALLENGE  ' + runDate : 'ENDLESS', W / 2, 244, 13, mode === 'daily' ? C.gold : C.muted, 'center', '800');
-  text('BEST ' + bestFor(mode).score, W / 2, 268, 15, C.text, 'center', '800');
-  const a = 0.55 + 0.45 * Math.sin(clock * 5);
-  ctx.globalAlpha = a;
-  if (!save.seen) text('HOLD TO PUMP', W / 2, 410, 26, '#ffffff', 'center', '900', 14);
-  else text('HOLD TO START', W / 2, 410, 17, '#ffffff', 'center', '800', 8);
-  ctx.globalAlpha = 1;
-  drawModeToggle(500);
-  drawSkinChips(560);
-  drawMute();
-}
-
-function drawGameOver() {
-  const t = deadT - 0.1;
-  if (t <= 0) { drawMute(); return; }
-  const a = clamp(t / 0.35, 0, 1), e = easeOutBack(clamp(t / 0.5, 0, 1));
-  ctx.fillStyle = 'rgba(4,7,11,' + (0.62 * a) + ')';
-  ctx.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top);
-  ctx.globalAlpha = a;
-
-  ctx.save(); ctx.translate(W / 2, 140); ctx.scale(e, e);
-  text(deathMsg, 0, 0, 34, C.red, 'center', '900', 18, W - 36);
-  ctx.restore();
-
-  if (newBest) {                                            // big NEW BEST! animation
-    const s = 1 + 0.12 * Math.sin(clock * 10);
-    ctx.save(); ctx.translate(W / 2, 200); ctx.scale(s * e, s * e); ctx.rotate(Math.sin(clock * 6) * 0.05);
-    text('NEW BEST!', 0, 0, 44, 'hsl(' + ((clock * 300) % 360) + ',100%,62%)', 'center', '900', 22);
-    ctx.restore();
-    if (!confettiDone && deadT > 0.5) {
-      confettiDone = true; Sound.newBest();
-      for (let i = 0; i < 70; i++) {
-        particles.push({ x: rand(20, W - 20), y: view.top - 10, vx: rand(-60, 60), vy: rand(80, 220), life: 2.2, max: 2.2, color: 'hsl(' + Math.floor(rand(0, 360)) + ',100%,60%)', size: rand(2, 4), g: 120 });
-      }
-    }
-  }
-  text('SCORE', W / 2, newBest ? 252 : 238, 12, C.muted, 'center', '800');
-  text(String(lastRun.score), W / 2, newBest ? 298 : 286, 64, C.text, 'center', '900', 14);
-  text('BEST ' + bestFor(lastRun.mode).score + (lastRun.mode === 'daily' ? '  (DAILY)' : ''), W / 2, 338, 15, C.gold, 'center', '800');
-  text(lastRun.candles + ' candles survived', W / 2, 362, 14, C.muted, 'center', '700');
-  if (unlockedSkin !== null) text('🔓 SKIN UNLOCKED: ' + CONFIG.skins[unlockedSkin].name, W / 2, 392, 15, C.gold, 'center', '900', 10);
-
-  pill('share', 'SHARE SCORE 📤', W / 2, 436, 220, 44, C.green, '#04110a', 16);
-  drawModeToggle(490);
-  drawSkinChips(552);
-  if (deadT > CONFIG.retryLock) {
-    ctx.globalAlpha = a * (0.5 + 0.5 * Math.sin(clock * 6));
-    text('TAP TO RETRY', W / 2, 612, 18, '#ffffff', 'center', '900', 10);
-  }
-  ctx.globalAlpha = 1;
-  drawMute();
-}
-
-function render() {
-  buttons = [];
-  const k = dpr * scale;
-  const sx = (Math.random() - 0.5) * 2 * shake, sy = (Math.random() - 0.5) * 2 * shake;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.setTransform(k, 0, 0, k, dpr * offX + k * sx, dpr * offY + k * sy);
-
-  drawBackdrop();
-  // everything that lives in the world is clipped to the playfield width
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0, view.top - 60, W, (view.bottom - view.top) + 120); ctx.clip();
-  drawBgCandles();
-  drawGhost();
-  for (const o of obstacles) drawObstacle(o);
-  for (const g of greens) drawGreen(g);
-  for (const p of pickups) drawPickup(p);
-  drawTrail();
-  if (state !== 'dead') drawBall(BX, ball.y, state === 'play' ? ball.vy : 0);
-  drawParticles();
-  drawPopups();
-  ctx.restore();
-
-  // darken the pillar-box areas on wide screens and mark the field edges
-  if (view.left < -1) {
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(view.left, view.top, -view.left, view.bottom - view.top);
-    ctx.fillRect(W, view.top, view.right - W, view.bottom - view.top);
-    ctx.fillStyle = 'rgba(0,255,136,0.25)';
-    ctx.fillRect(-1, view.top, 1, view.bottom - view.top); ctx.fillRect(W, view.top, 1, view.bottom - view.top);
-  }
-
-  // overlays without screen shake
-  ctx.setTransform(k, 0, 0, k, dpr * offX, dpr * offY);
-  if (flash > 0) {
-    ctx.fillStyle = 'rgba(' + flashColor + ',' + (flash * 0.35) + ')';
-    ctx.fillRect(view.left, view.top, view.right - view.left, view.bottom - view.top);
-  }
-  if (state === 'play') drawHUD();
-  else if (state === 'ready') drawReady();
-  else drawGameOver();
-
-  if (toastT > 0) {
-    ctx.globalAlpha = clamp(toastT / 0.4, 0, 1);
-    roundRect(W / 2 - 130, H - 64, 260, 34, 17); ctx.fillStyle = 'rgba(20,30,42,0.95)'; ctx.fill();
-    text(toastText, W / 2, H - 46, 13, '#ffffff', 'center', '800', 0, 240);
-    ctx.globalAlpha = 1;
-  }
-}
-
-/* ------------------------------- SHARING -------------------------------- */
-function copyText(str) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    return navigator.clipboard.writeText(str).then(function () { return true; }, function () { return fallbackCopy(str); });
-  }
-  return Promise.resolve(fallbackCopy(str));
-}
-function fallbackCopy(str) {
-  try {
-    const ta = document.createElement('textarea');
-    ta.value = str; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, str.length);
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    return !!ok;
-  } catch (e) { return false; }
-}
-function shareScore() {
-  const url = CONFIG.shareUrl || String(location.href).split('#')[0];
-  const n = lastRun.candles;
-  const txt = lastRun.mode === 'daily'
-    ? 'I survived ' + n + " candles in today's CANDLE DODGER Daily Challenge 📉 Can you beat me? 👉 " + url
-    : 'I survived ' + n + ' candles in CANDLE DODGER 📉 Can you beat me? 👉 ' + url;
-  const doCopy = function () { copyText(txt).then(function (ok) { toast(ok ? 'COPIED! PASTE IT ANYWHERE' : 'COULD NOT COPY'); }); };
-  if (navigator.share) {
-    navigator.share({ title: 'CANDLE DODGER', text: txt }).catch(function (err) {
-      if (!err || err.name !== 'AbortError') doCopy();      // user cancelled => do nothing
-    });
-  } else doCopy();
-}
-
-/* -------------------------------- INPUT --------------------------------- */
-const input = { held: false, pointers: new Set(), keys: new Set() };
-const pressed = new Map();                // pointerId -> button id being pressed
-function recomputeHeld() { input.held = input.pointers.size > 0 || input.keys.size > 0; }
-
-function toLogical(e) { return { x: (e.clientX - offX) / scale, y: (e.clientY - offY) / scale }; }
-function hitButton(x, y) {
-  for (let i = buttons.length - 1; i >= 0; i--) {
-    const b = buttons[i];
-    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b;
-  }
-  return null;
-}
-function toggleMute() { Sound.setMuted(!Sound.muted); save.mute = Sound.muted; persist(); }
-function toggleMode() {
-  if (state === 'play') return;
-  mode = mode === 'daily' ? 'endless' : 'daily';
-  save.mode = mode; persist();
-}
-function onButton(id) {
-  Sound.resume();
-  if (id === 'mute') toggleMute();
-  else if (id === 'mode') { toggleMode(); Sound.blip(); }
-  else if (id === 'share') shareScore();
-  else if (id.indexOf('skin') === 0) {
-    const i = parseInt(id.slice(4), 10), s = CONFIG.skins[i];
-    if (save.maxScore >= s.unlock) { save.skin = i; persist(); Sound.blip(); }
-    else toast('SCORE ' + s.unlock + ' TO UNLOCK ' + s.name);
-  }
-}
-function tryStartOrRestart() {
-  if (state === 'ready') startRun();
-  else if (state === 'dead' && deadT > CONFIG.retryLock) startRun();    // instant one-tap restart
-}
-
-canvas.addEventListener('pointerdown', function (e) {
-  e.preventDefault(); Sound.resume();
-  try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-  const p = toLogical(e), b = hitButton(p.x, p.y);
-  if (b) { pressed.set(e.pointerId, b.id); return; }       // a button press never counts as "hold"
-  input.pointers.add(e.pointerId); recomputeHeld();
-  tryStartOrRestart();
-}, { passive: false });
-
-function pointerEnd(e) {
-  e.preventDefault(); Sound.resume();
-  const id = pressed.get(e.pointerId);
-  pressed.delete(e.pointerId);
-  if (id && e.type === 'pointerup') {
-    const p = toLogical(e), b = hitButton(p.x, p.y);
-    if (b && b.id === id) onButton(id);
-  }
-  input.pointers.delete(e.pointerId); recomputeHeld();
-}
-canvas.addEventListener('pointerup', pointerEnd, { passive: false });
-canvas.addEventListener('pointercancel', pointerEnd, { passive: false });
-
-window.addEventListener('keydown', function (e) {
-  const k = e.code;
-  if (k === 'Space' || k === 'ArrowUp' || k === 'KeyW') {
-    e.preventDefault();
-    if (e.repeat) return;
-    Sound.resume(); input.keys.add(k); recomputeHeld(); tryStartOrRestart();
-  } else if (k === 'KeyM') toggleMute();
-  else if (k === 'KeyD') toggleMode();
-});
-window.addEventListener('keyup', function (e) { input.keys.delete(e.code); recomputeHeld(); });
-window.addEventListener('blur', function () { input.pointers.clear(); input.keys.clear(); pressed.clear(); recomputeHeld(); });
-
-// no scrolling, pinch zoom, double-tap zoom, text selection or context menus
-['gesturestart', 'gesturechange', 'gestureend', 'dblclick', 'contextmenu', 'selectstart', 'dragstart'].forEach(function (ev) {
-  document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
-});
-document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
-canvas.addEventListener('touchend', function (e) { e.preventDefault(); }, { passive: false });
-
-/* ------------------------------- MAIN LOOP ------------------------------ */
-let lastT = 0;
-function loop(t) {
-  requestAnimationFrame(loop);
-  if (!lastT) lastT = t;
-  let dt = (t - lastT) / 1000; lastT = t;
-  dt = Math.min(dt, 0.033);                 // avoid huge jumps after tab switches
-  if (dt <= 0) return;
-  update(dt);
-  render();
-}
-
-resize();
-requestAnimationFrame(loop);
-</script>
 </body>
 </html>
