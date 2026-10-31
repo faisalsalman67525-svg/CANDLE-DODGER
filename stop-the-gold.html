@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Arcade - Play Free Online Mini Games</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin: 30px 0;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #22c55e;
+      text-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+      margin-bottom: 10px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 1.1rem;
+    }
+    .arcade-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 40px;
+    }
+    .game-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .game-card:hover {
+      transform: translateY(-5px);
+      border-color: #22c55e;
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.15);
+    }
+    .game-title {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #f8fafc;
+      margin-bottom: 10px;
+    }
+    .game-desc {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    .play-btn {
+      background: #22c55e;
+      color: #000;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: background 0.2s;
+      display: inline-block;
+    }
+    .play-btn:hover {
+      background: #16a34a;
+      color: #fff;
+    }
+    footer {
+      margin-top: auto;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.9rem;
+      padding: 20px 0;
+      border-top: 1px solid #1e293b;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎮 MY ARCADE PORTAL</h1>
+    <p>Play awesome browser games instantly. No downloads required!</p>
+  </header>
+
+  <div class="arcade-grid">
+    <!-- Game 1: Candle Dodger -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🕯️ Candle Dodger</div>
+        <div class="game-desc">A fast, addictive one-tap trading chart game. Dodge red candles and collect green ones!</div>
+      </div>
+      <a href="candle-dodger.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 2: Burger Stack Rush -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🍔 Burger Stack Rush</div>
+        <div class="game-desc">Stack ingredients perfectly to build the tallest and most delicious burger tower!</div>
+      </div>
+      <a href="burger-stack.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 3: 2048 Arcade -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🧩 2048 Arcade</div>
+        <div class="game-desc">Slide tiles and merge matching numbers to reach the legendary 2048 tile!</div>
+      </div>
+      <a href="2048.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 4: Flappy Neon -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🐦 Flappy Neon</div>
+        <div class="game-desc">Tap to fly through glowing neon pipes in this highly addictive arcade classic!</div>
+      </div>
+      <a href="flappy.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 5: Retro Snake -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🐍 Retro Snake</div>
+        <div class="game-desc">Guide the neon snake, eat food to grow longer, and avoid walls in this retro classic!</div>
+      </div>
+      <a href="snake.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 6: Perfect Slice -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🔪 Perfect Slice</div>
+        <div class="game-desc">Drop the chef's knife at the exact center of sliding fruits for massive combos!</div>
+      </div>
+      <a href="perfect-slice.html" class="play-btn">Play Now</a>
+    </div>
+
+    <!-- Game 7: Stop The Gold -->
+    <div class="game-card">
+      <div>
+        <div class="game-title">🏆 Stop The Gold</div>
+        <div class="game-desc">Stop the spinning needle inside the golden zone to stack gold bars and build streaks!</div>
+      </div>
+      <a href="stop-the-gold.html" class="play-btn">Play Now</a>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 My Arcade. All rights reserved.
+  </footer>
+
+</body>
+</html>
