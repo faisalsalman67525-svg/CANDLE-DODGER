@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Perfect Slice - Mini Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+    .game-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 100vh;
+      max-height: 750px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      background: #1e293b;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 2px solid #334155;
+    }
+    .top-controls {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .btn-ui {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #475569;
+      color: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      pointer-events: auto;
+      backdrop-filter: blur(4px);
+    }
+    .btn-ui:active {
+      transform: scale(0.95);
+    }
+    .mode-tag {
+      background: rgba(234, 179, 8, 0.2);
+      border: 1px solid #eab308;
+      color: #facc15;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .back-btn {
+      margin-top: 10px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: #22c55e;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-wrapper">
+    <div class="top-controls">
+      <button class="btn-ui" id="mute-btn">🔊 Sound</button>
+      <div class="mode-tag" id="mode-tag">Classic Mode</div>
+      <button class="btn-ui" id="mode-btn">📅 Daily</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <a href="index.html" class="back-btn">← Back to Arcade Home</a>
+
+  <script>
+    // --- CONFIGURATION ---
+    const CONFIG = {
+      canvasWidth: 400,
+      canvasHeight: 650,
+      conveyorY: 480,
+      bladeCenterY: 180,
+      perfectTolerance: 8, // pixels from exact center
+      maxHearts: 3,
+      baseSpeed: 3.2,
+      speedRamp: 0.15,
+      decoyInterval: 8,
+      skinMilestones: [
+        { id: 'steel', name: 'Steel', scoreReq: 0, color: '#cbd5e1' },
+        { id: 'golden', name: 'Golden', scoreReq: 15, color: '#facc15' },
+        { id: 'neon', name: 'Neon', scoreReq: 30, color: '#06b6d4' },
+        { id: 'samurai', name: 'Samurai', scoreReq: 50, color: '#ef4444' },
+        { id: 'rainbow', name: 'Rainbow', scoreReq: 80, color: 'rainbow' }
+      ],
+      gameOverMessages: [
+        "Knife skills: 0",
+        "Salad is ruined 🥗",
+        "Off-center chef",
+        "My grandma slices better",
+        "Gordon is disappointed"
+      ]
+    };
+
+    // --- GAME STATE ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let scale = 1;
+    let score = 0;
+    let combo = 0;
+    let hearts = CONFIG.maxHearts;
+    let isGameOver = false;
+    let isDailyMode = false;
+    let dailySeed = new Date().getFullYear() * 10000 + (new Date().getMonth() + 1) * 100 + new Date().getDate();
+    let seedState = dailySeed;
+    
+    let highScoreClassic = localStorage.getItem('ps_high_classic') || 0;
+    let highScoreDaily = localStorage.getItem('ps_high_daily_' + dailySeed) || 0;
+    let activeSkinIndex = parseInt(localStorage.getItem('ps_active_skin') || '0');
+    let isMuted = localStorage.getItem('ps_muted') === 'true';
+
+    let fruitsCount = 0;
+    let currentFruit = null;
+    let halves = [];
+    let particles = [];
+    let popups = [];
+    
+    let knifeState = { y: CONFIG.bladeCenterY, dropping: false, returning: false };
+    let screenShake = 0;
+    let hintPulse = 0;
+    let isFirstRun = true;
+    let isNewBest = false;
+
+    // --- AUDIO SYSTEM (Web Audio API) ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+      if (isMuted) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      let now = audioCtx.currentTime;
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'slice') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+      } else if (type === 'perfect') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+        osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'fail') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.25);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.25);
+        osc.start(now); osc.stop(now + 0.25);
+      } else if (type === 'bomb') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.linearRampToValueAtTime(30, now + 0.4);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+      }
+    }
+
+    // --- SEEDED RANDOM (FOR DAILY MODE) ---
+    function seededRandom() {
+      if (!isDailyMode) return Math.random();
+      let x = Math.sin(seedState++) * 10000;
+      return x - Math.floor(x);
+    }
+
+    // --- RESIZE / DPR CANVAS SETUP ---
+    function setupCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      scale = (rect.width / CONFIG.canvasWidth) * dpr;
+      ctx.imageSmoothingEnabled = true;
+    }
+
+    // --- FRUITS DEFINITION & CREATION ---
+    const FRUIT_TYPES = [
+      { name: 'watermelon', color: '#22c55e', innerColor: '#ef4444', radius: 42 },
+      { name: 'orange', color: '#f97316', innerColor: '#ffedd5', radius: 34 },
+      { name: 'apple', color: '#dc2626', innerColor: '#fef08a', radius: 32 },
+      { name: 'pineapple', color: '#eab308', innerColor: '#fef9c3', radius: 46 },
+      { name: 'kiwi', color: '#65a30d', innerColor: '#ecfccb', radius: 28 }
+    ];
+
+    function spawnFruit() {
+      fruitsCount++;
+      let isDecoy = fruitsCount % CONFIG.decoyInterval === 0;
+      
+      let currentSpeed = (CONFIG.baseSpeed + (score * CONFIG.speedRamp)) * (isDailyMode ? 1.1 : 1.0);
+      let isVariableSpeed = !isDecoy && seededRandom() > 0.6;
+
+      if (isDecoy) {
+        currentFruit = {
+          isDecoy: true,
+          type: 'bomb',
+          x: -50,
+          y: CONFIG.conveyorY - 35,
+          radius: 35,
+          speed: currentSpeed * 1.1,
+          isVariableSpeed: false,
+          warningFlash: 20
+        };
+      } else {
+        let typeObj = FRUIT_TYPES[Math.floor(seededRandom() * FRUIT_TYPES.length)];
+        let radiusVar = typeObj.radius + (seededRandom() * 12 - 6);
+        currentFruit = {
+          isDecoy: false,
+          type: typeObj.name,
+          color: typeObj.color,
+          innerColor: typeObj.innerColor,
+          x: -60,
+          y: CONFIG.conveyorY - radiusVar,
+          radius: radiusVar,
+          speed: currentSpeed,
+          baseSpeed: currentSpeed,
+          isVariableSpeed: isVariableSpeed,
+          phase: 0
+        };
+      }
+    }
+
+    // --- INPUT HANDLERS ---
+    function handleTap(e) {
+      if (e) e.preventDefault();
+      initAudio();
+
+      if (isGameOver) {
+        restartGame();
+        return;
+      }
+
+      if (!knifeState.dropping && !knifeState.returning) {
+        knifeState.dropping = true;
+        isFirstRun = false;
+      }
+    }
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A') return;
+      handleTap(e);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') handleTap();
+    });
+
+    document.getElementById('mute-btn').addEventListener('click', () => {
+      isMuted = !isMuted;
+      localStorage.setItem('ps_muted', isMuted);
+      document.getElementById('mute-btn').innerText = isMuted ? "🔇 Muted" : "🔊 Sound";
+    });
+
+    document.getElementById('mode-btn').addEventListener('click', () => {
+      isDailyMode = !isDailyMode;
+      document.getElementById('mode-tag').innerText = isDailyMode ? "Daily Mode" : "Classic Mode";
+      document.getElementById('mode-btn').innerText = isDailyMode ? "🎮 Classic" : "📅 Daily";
+      restartGame();
+    });
+
+    // --- GAME RESTART ---
+    function restartGame() {
+      score = 0;
+      combo = 0;
+      hearts = CONFIG.maxHearts;
+      isGameOver = false;
+      isNewBest = false;
+      fruitsCount = 0;
+      halves = [];
+      particles = [];
+      popups = [];
+      knifeState = { y: CONFIG.bladeCenterY, dropping: false, returning: false };
+      seedState = dailySeed;
+      spawnFruit();
+    }
+
+    // --- SLICE LOGIC ---
+    function executeSlice() {
+      playSound('slice');
+
+      if (!currentFruit) return;
+
+      let fruitCenterX = currentFruit.x;
+      let bladeX = CONFIG.canvasWidth / 2;
+      let distFromCenter = Math.abs(fruitCenterX - bladeX);
+
+      // Check if knife actually hit the fruit
+      if (distFromCenter < currentFruit.radius) {
+        if (currentFruit.isDecoy) {
+          // Hit Bomb!
+          playSound('bomb');
+          screenShake = 25;
+          hearts = 0; // Instant Game Over or lose heart
+          triggerGameOver();
+          createExplosion(bladeX, CONFIG.conveyorY - 20, '#ef4444');
+          currentFruit = null;
+          return;
+        }
+
+        let isPerfect = distFromCenter <= CONFIG.perfectTolerance;
+        
+        if (isPerfect) {
+          combo++;
+          let points = 1 * combo;
+          score += points;
+          playSound('perfect');
+          screenShake = 6;
+          addPopup("PERFECT! x" + combo, bladeX, CONFIG.conveyorY - 80, '#22c55e');
+          createSplatter(bladeX, CONFIG.conveyorY - currentFruit.radius, currentFruit.innerColor, 25);
+        } else {
+          combo = 0;
+          score += 1;
+          hearts--;
+          playSound('fail');
+          screenShake = 12;
+          addPopup("OFF-CENTER!", bladeX, CONFIG.conveyorY - 80, '#f97316');
+          createSplatter(bladeX, CONFIG.conveyorY - currentFruit.radius, currentFruit.color, 12);
+        }
+
+        // Check Unlockable Skins
+        checkSkinUnlocks();
+
+        // High Score Tracking
+        let currentBest = isDailyMode ? highScoreDaily : highScoreClassic;
+        if (score > currentBest) {
+          if (!isNewBest && currentBest > 0) isNewBest = true;
+          if (isDailyMode) {
+            highScoreDaily = score;
+            localStorage.setItem('ps_high_daily_' + dailySeed, score);
+          } else {
+            highScoreClassic = score;
+            localStorage.setItem('ps_high_classic', score);
+          }
+        }
+
+        // Split into Halves
+        splitFruit(currentFruit, bladeX, isPerfect);
+        currentFruit = null;
+
+        if (hearts <= 0) {
+          triggerGameOver();
+        } else {
+          setTimeout(spawnFruit, 200);
+        }
+      }
+    }
+
+    function checkSkinUnlocks() {
+      for (let i = CONFIG.skinMilestones.length - 1; i >= 0; i--) {
+        if (score >= CONFIG.skinMilestones[i].scoreReq) {
+          if (activeSkinIndex < i) {
+            activeSkinIndex = i;
+            localStorage.setItem('ps_active_skin', activeSkinIndex);
+            addPopup("NEW SKIN: " + CONFIG.skinMilestones[i].name, CONFIG.canvasWidth / 2, 140, '#facc15');
+          }
+          break;
+        }
+      }
+    }
+
+    function splitFruit(fruit, cutX, isPerfect) {
+      let leftRatio = isPerfect ? 0.5 : Math.max(0.2, Math.min(0.8, (cutX - (fruit.x - fruit.radius)) / (fruit.radius * 2)));
+      
+      // Left Half
+      halves.push({
+        color: fruit.color,
+        innerColor: fruit.innerColor,
+        radius: fruit.radius,
+        x: fruit.x,
+        y: fruit.y,
+        vx: -3.5,
+        vy: -2,
+        rot: -0.1,
+        ratio: leftRatio,
+        side: 'left'
+      });
+      // Right Half
+      halves.push({
+        color: fruit.color,
+        innerColor: fruit.innerColor,
+        radius: fruit.radius,
+        x: fruit.x,
+        y: fruit.y,
+        vx: 3.5,
+        vy: -2,
+        rot: 0.1,
+        ratio: 1 - leftRatio,
+        side: 'right'
+      });
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      let msg = CONFIG.gameOverMessages[Math.floor(Math.random() * CONFIG.gameOverMessages.length)];
+      popups.push({ text: msg, x: CONFIG.canvasWidth / 2, y: 260, color: '#ef4444', scale: 1.2, life: 200 });
+    }
+
+    // --- VISUAL EFFECTS (PARTICLES & POPUPS) ---
+    function createSplatter(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 6 + 2;
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 2,
+          radius: Math.random() * 5 + 2,
+          color: color,
+          life: 30
+        });
+      }
+    }
+
+    function createExplosion(x, y, color) {
+      createSplatter(x, y, color, 40);
+    }
+
+    function addPopup(text, x, y, color) {
+      popups.push({ text, x, y, color, scale: 1.5, life: 45 });
+    }
+
+    // --- MAIN GAME LOOP ---
+    function update() {
+      // Screen Shake Decay
+      if (screenShake > 0) screenShake *= 0.88;
+
+      // Knife Animation
+      if (knifeState.dropping) {
+        knifeState.y += 38;
+        if (knifeState.y >= CONFIG.conveyorY - 20) {
+          knifeState.y = CONFIG.conveyorY - 20;
+          knifeState.dropping = false;
+          knifeState.returning = true;
+          executeSlice();
+        }
+      } else if (knifeState.returning) {
+        knifeState.y -= 18;
+        if (knifeState.y <= CONFIG.bladeCenterY) {
+          knifeState.y = CONFIG.bladeCenterY;
+          knifeState.returning = false;
+        }
+      }
+
+      // Fruit Movement
+      if (currentFruit && !isGameOver) {
+        if (currentFruit.isVariableSpeed) {
+          currentFruit.phase += 0.05;
+          currentFruit.speed = currentFruit.baseSpeed + Math.sin(currentFruit.phase) * 1.8;
+        }
+        currentFruit.x += currentFruit.speed;
+
+        // Passed off screen
+        if (currentFruit.x - currentFruit.radius > CONFIG.canvasWidth) {
+          if (currentFruit.isDecoy) {
+            // Avoided bomb bonus!
+            score += 2;
+            addPopup("BOMB DODGED! +2", CONFIG.canvasWidth / 2, CONFIG.conveyorY - 80, '#38bdf8');
+          } else {
+            // Missed fruit
+            hearts--;
+            combo = 0;
+            playSound('fail');
+            addPopup("MISSED!", CONFIG.canvasWidth / 2, CONFIG.conveyorY - 80, '#ef4444');
+            if (hearts <= 0) triggerGameOver();
+          }
+          if (hearts > 0) spawnFruit();
+          else currentFruit = null;
+        }
+      }
+
+      // Halves Animation
+      for (let i = halves.length - 1; i >= 0; i--) {
+        let h = halves[i];
+        h.x += h.vx;
+        h.y += h.vy;
+        h.vy += 0.25; // gravity
+        if (h.y > CONFIG.canvasHeight + 50) halves.splice(i, 1);
+      }
+
+      // Particles Update
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.2;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      // Popups Update
+      for (let i = popups.length - 1; i >= 0; i--) {
+        let pop = popups[i];
+        pop.y -= 0.8;
+        pop.scale = Math.max(1.0, pop.scale - 0.02);
+        pop.life--;
+        if (pop.life <= 0) popups.splice(i, 1);
+      }
+
+      hintPulse += 0.05;
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function draw() {
+      ctx.save();
+      ctx.scale(scale, scale);
+
+      // Apply Screen Shake
+      if (screenShake > 0.5) {
+        ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+      }
+
+      // Background
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+
+      // Chopping Board / Conveyor
+      ctx.fillStyle = '#b45309'; // Wooden Board
+      ctx.fillRect(0, CONFIG.conveyorY - 10, CONFIG.canvasWidth, 35);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(0, CONFIG.conveyorY + 25, CONFIG.canvasWidth, 8);
+
+      // Center Cutting Line Indicator
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(CONFIG.canvasWidth / 2, 80);
+      ctx.lineTo(CONFIG.canvasWidth / 2, CONFIG.conveyorY + 20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Halves
+      halves.forEach(h => {
+        ctx.save();
+        ctx.translate(h.x, h.y);
+        ctx.fillStyle = h.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, h.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = h.innerColor;
+        ctx.beginPath();
+        ctx.arc(0, 0, h.radius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Draw Current Fruit / Decoy
+      if (currentFruit) {
+        ctx.save();
+        ctx.translate(currentFruit.x, currentFruit.y);
+
+        if (currentFruit.isDecoy) {
+          // Draw Bomb
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.arc(0, 0, currentFruit.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          // Skull / Fuse Symbol
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('💣', 0, 0);
+        } else {
+          // Draw Fruit Outer
+          ctx.fillStyle = currentFruit.color;
+          ctx.beginPath();
+          ctx.arc(0, 0, currentFruit.radius, 0, Math.PI * 2);
+          ctx.fill();
+          // Draw Inner Details
+          ctx.fillStyle = currentFruit.innerColor;
+          ctx.beginPath();
+          ctx.arc(0, 0, currentFruit.radius * 0.75, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Draw Particles
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw Chef Knife / Blade
+      drawKnife(CONFIG.canvasWidth / 2, knifeState.y);
+
+      // Draw UI Header (Score & Hearts)
+      drawUI();
+
+      // Draw Popups
+      popups.forEach(pop => {
+        ctx.save();
+        ctx.font = `bold ${Math.round(20 * pop.scale)}px sans-serif`;
+        ctx.fillStyle = pop.color;
+        ctx.textAlign = 'center';
+        ctx.fillText(pop.text, pop.x, pop.y);
+        ctx.restore();
+      });
+
+      // First Time Hint
+      if (isFirstRun && !isGameOver) {
+        let pulseScale = 1 + Math.sin(hintPulse * 4) * 0.08;
+        ctx.save();
+        ctx.translate(CONFIG.canvasWidth / 2, CONFIG.canvasHeight - 100);
+        ctx.scale(pulseScale, pulseScale);
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillStyle = '#facc15';
+        ctx.textAlign = 'center';
+        ctx.fillText('👇 TAP TO SLICE AT CENTER!', 0, 0);
+        ctx.restore();
+      }
+
+      // Game Over Screen Overlay
+      if (isGameOver) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 32px sans-serif';
+        ctx.fillText('GAME OVER', CONFIG.canvasWidth / 2, 180);
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(`Score: ${score}`, CONFIG.canvasWidth / 2, 230);
+
+        let best = isDailyMode ? highScoreDaily : highScoreClassic;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px sans-serif';
+        ctx.fillText(`Best Score: ${best}`, CONFIG.canvasWidth / 2, 260);
+
+        if (isNewBest) {
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('🎉 NEW BEST RECORD! 🎉', CONFIG.canvasWidth / 2, 295);
+        }
+
+        // Tap to Restart Button
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(CONFIG.canvasWidth / 2 - 90, 360, 180, 48);
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('TAP TO PLAY', CONFIG.canvasWidth / 2, 390);
+      }
+
+      ctx.restore();
+    }
+
+    function drawKnife(x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      let skin = CONFIG.skinMilestones[activeSkinIndex];
+      let bladeColor = skin.color === 'rainbow' ? `hsl(${(Date.now() / 5) % 360}, 80%, 60%)` : skin.color;
+
+      // Handle
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(-8, -90, 16, 40);
+
+      // Blade Body
+      ctx.fillStyle = bladeColor;
+      ctx.beginPath();
+      ctx.moveTo(-4, -50);
+      ctx.lineTo(4, -50);
+      ctx.lineTo(6, 30);
+      ctx.lineTo(-20, 30); // Knife tip slope
+      ctx.closePath();
+      ctx.fill();
+
+      // Blade Edge Shine
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillRect(3, -50, 2, 80);
+
+      ctx.restore();
+    }
+
+    function drawUI() {
+      // Score
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(score, 20, 60);
+
+      // Hearts
+      ctx.textAlign = 'right';
+      let heartStr = '';
+      for (let i = 0; i < CONFIG.maxHearts; i++) {
+        heartStr += i < hearts ? '❤️ ' : '🖤 ';
+      }
+      ctx.font = '18px sans-serif';
+      ctx.fillText(heartStr, CONFIG.canvasWidth - 15, 55);
+    }
+
+    // --- MAIN GAME LOOP RUNNER ---
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Init Setup
+    window.addEventListener('resize', setupCanvas);
+    setupCanvas();
+    spawnFruit();
+    loop();
+  </script>
+</body>
+</html>
